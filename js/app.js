@@ -27,6 +27,10 @@ const joinRoomInput=document.getElementById("join-room-input");
 const characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
  
 createRoomButton.addEventListener("click", () => {
+    if (!currentUserId) {
+    console.log("User is not authenticated yet.");
+    return;
+}
 const roomCode=generateRoomCode();
 console.log(roomCode);
  const roomPath = "rooms/" + roomCode;
@@ -36,8 +40,11 @@ console.log(roomCode);
     hostId: currentUserId,
     createdAt:Date.now() 
 })
-.then(()=>{console.log("Host id saved")})
+.then(()=>{console.log("Room data saved");
+     
+})
 .catch((error)=>{console.log(error)});
+
 console.log(roomPath);
 console.log(currentUserId);
 });
