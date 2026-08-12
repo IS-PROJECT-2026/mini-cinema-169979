@@ -1,0 +1,33 @@
+body{
+    text-align: center;
+    padding: 50px;
+}
+h1{
+    font-size: 48px;
+}
+p {
+    font-size: 20px;
+      margin-bottom: 30px;
+}
+ 
+ 
+#join-room-input {
+    padding: 12px;
+    width: 200px;
+    font-size: 18px;
+    border-radius: 8px;
+}
+button {
+    padding: 12px 24px;
+    margin: 10px;
+    font-size: 18px;
+    border-radius: 8px;
+     
+}
+ #landing-page {
+    max-width: 600px;
+    margin: 0 auto;
+}
+#create-room-btn {
+    cursor: pointer;
+}
