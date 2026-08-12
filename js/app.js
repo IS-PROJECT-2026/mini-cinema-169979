@@ -16,4 +16,10 @@ signInAnonymously(auth)
     .catch((error) => {
         console.log(error);
     });
-   
+
+const createRoomButton = document.getElementById("create-room-btn");
+const joinRoomButton = document.getElementById("join-room-btn");
+const joinRoomInput=document.getElementById("join-room-input");
+
+createRoomButton.addEventListener("click",( )=>{console.log("You have created room");  });
+joinRoomButton.addEventListener("click",()=>{console.log("You have joined the room :",joinRoomInput.value)});
