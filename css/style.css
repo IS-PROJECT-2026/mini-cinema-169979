@@ -1,33 +1,298 @@
-body{
+:root {
+    --bg: #0b0f1a;
+    --bg-soft: #111827;
+    --surface: #1a2436;
+    --surface-hover: #212d42;
+    --border: #2a3548;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --primary: #8b5cf6;
+    --primary-dark: #7c3aed;
+    --primary-glow: rgba(139, 92, 246, 0.35);
+    --accent: #3b82f6;
+    --accent-dark: #2563eb;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --radius: 12px;
+    --radius-lg: 16px;
+    --transition: 0.2s ease;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background: radial-gradient(circle at top, var(--bg-soft), var(--bg) 70%);
+    color: var(--text);
     text-align: center;
-    padding: 50px;
+    display: flex;
+    flex-direction: column;
 }
-h1{
-    font-size: 48px;
+
+main,
+#landing-page,
+#room-page {
+    flex: 1;
 }
-p {
-    font-size: 20px;
-      margin-bottom: 30px;
-}
- 
- 
-#join-room-input {
-    padding: 12px;
-    width: 200px;
-    font-size: 18px;
-    border-radius: 8px;
-}
-button {
-    padding: 12px 24px;
-    margin: 10px;
-    font-size: 18px;
-    border-radius: 8px;
-     
-}
- #landing-page {
-    max-width: 600px;
+
+/* Landing page */
+
+#landing-page {
+    width: 90%;
+    max-width: 650px;
     margin: 0 auto;
+    padding-top: 120px;
 }
-#create-room-btn {
+
+h1 {
+    margin-bottom: 10px;
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #ffffff, var(--primary) 70%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+#landing-page p {
+    margin-bottom: 40px;
+    font-size: 20px;
+    color: var(--text-muted);
+}
+
+#create-room-btn,
+#join-room-btn,
+#set-video-btn,
+#leave-room-btn {
+    border: none;
+    border-radius: var(--radius);
+    padding: 13px 24px;
+    font-size: 17px;
+    font-weight: 600;
     cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+#create-room-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+#create-room-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px var(--primary-glow);
+}
+
+#join-room-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    color: white;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+}
+
+#join-room-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+}
+
+#join-room-input,
+#youtube-url-input {
+    padding: 13px 16px;
+    margin: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 17px;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+#join-room-input {
+    width: 220px;
+}
+
+#join-room-input:focus,
+#youtube-url-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+#join-room-input::placeholder,
+#youtube-url-input::placeholder {
+    color: var(--text-muted);
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Room page */
+
+#room-page {
+    width: 95%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+#room-page h2 {
+    margin-bottom: 8px;
+    font-size: 36px;
+    font-weight: 700;
+}
+
+#room-code-display {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: #c4b5fd;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+/* Members */
+
+#room-page h3 {
+    margin-top: 30px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+
+#member-list {
+    max-width: 300px;
+    margin: 0 auto 30px;
+    padding: 0;
+    list-style: none;
+}
+
+#member-list li {
+    margin: 6px 0;
+    padding: 9px 14px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: background var(--transition);
+}
+
+#member-list li:hover {
+    background: var(--surface-hover);
+}
+
+/* YouTube player */
+
+#player {
+    width: 100%;
+    max-width: 640px;
+    margin: 25px auto;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* YouTube URL */
+
+#youtube-url-input {
+    width: 60%;
+    min-width: 250px;
+    font-size: 16px;
+}
+
+#set-video-btn,
+#leave-room-btn {
+    padding: 13px 22px;
+    margin: 10px 5px;
+    font-size: 16px;
+}
+
+#set-video-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+}
+
+#set-video-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px var(--primary-glow);
+}
+
+#leave-room-btn {
+    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
+    color: white;
+}
+
+#leave-room-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+}
+
+/* Footer */
+
+footer {
+    margin-top: 40px;
+    padding: 24px 20px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+footer a {
+    color: #a78bfa;
+    text-decoration: none;
+    transition: color var(--transition);
+}
+
+footer a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+    #landing-page {
+        padding-top: 80px;
+    }
+
+    h1 {
+        font-size: 42px;
+    }
+
+    #landing-page p {
+        font-size: 17px;
+    }
+
+    #join-room-input {
+        width: 100%;
+        margin: 10px 0;
+    }
+
+    #create-room-btn,
+    #join-room-btn {
+        width: 100%;
+        margin: 8px 0;
+    }
+
+    #youtube-url-input {
+        width: 100%;
+    }
+
+    #set-video-btn,
+    #leave-room-btn {
+        width: 100%;
+    }
 }

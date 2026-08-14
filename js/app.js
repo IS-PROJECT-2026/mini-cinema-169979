@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-config.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { ref, set,get,update,onValue, runTransaction } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { ref, set,get,update,onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
  const testRef = ref(db, "test");
 let currentUserId;
@@ -98,7 +98,6 @@ currentRoomCode = roomCode;
     const membersFolder = ref(db, roomPath + "/members");
 
     onValue(membersFolder, displayMembers);
-    listenForVideo();
     landingPage.style.display = "none";
 roomPage.style.display = "block";
 roomCodeDisplay.textContent =   roomCode;
@@ -145,7 +144,6 @@ update(membersFolder, {
 });
 });
     onValue(membersFolder, displayMembers);
-    listenForVideo();
      
     roomCodeDisplay.textContent =  joinRoomInput.value;
     landingPage.style.display = "none";
@@ -188,17 +186,71 @@ function generateRoomCode() {
 });
  
  let player;
-
+ let lastTime = 0;
+ 
 window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player("player", {
         height: "390",
         width: "640",
-        videoId: "M7lc1UVf-VE"
+        videoId: "8A7i67ZRjG8",
+
+        events: {
+    onStateChange: onPlayerStateChange
+}
     });
 };
+
+function onPlayerStateChange(event) {
+
+    const playbackRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/playback"
+    );
+
+    const currentTime = player.getCurrentTime();
+
+    if (event.data === YT.PlayerState.PLAYING) {
+        set(playbackRef, {
+            state: "playing",
+            time: currentTime
+        });
+    }
+
+    if (event.data === YT.PlayerState.PAUSED) {
+        set(playbackRef, {
+            state: "paused",
+            time: currentTime
+        });
+    }
+}
+function checkForSeek() {
+
+    if (!player) {
+        return;
+    }
+
+    const currentTime = player.getCurrentTime();
+
+    if (Math.abs(currentTime - lastTime) > 2) {
+
+        const playbackRef = ref(
+            db,
+            "rooms/" + currentRoomCode + "/playback"
+        );
+
+        set(playbackRef, {
+            state: "playing",
+            time: currentTime
+        });
+    }
+
+    lastTime = currentTime;
+}
+
+setInterval(checkForSeek, 1000);
 function getYouTubeVideoId(url) {
     const urlObject = new URL(url);
- 
+
     if (urlObject.hostname === "youtu.be") {
         return urlObject.pathname.substring(1);
     }
@@ -229,4 +281,8 @@ function listenForVideo() {
             player.loadVideoById(videoId);
         }
     });
+    
 }
+
+
+ 
