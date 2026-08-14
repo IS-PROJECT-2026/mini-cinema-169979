@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-config.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { ref, set,get,update,onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { ref, set,get,update,onValue, runTransaction } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
  const testRef = ref(db, "test");
 let currentUserId;
@@ -68,6 +68,8 @@ const landingPage = document.getElementById("landing-page");
 const roomPage = document.getElementById("room-page");
 const roomCodeDisplay = document.getElementById("room-code-display");
 const leaveRoomButton = document.getElementById("leave-room-btn");
+const youtubeUrlInput = document.getElementById("youtube-url-input");
+const setVideoButton = document.getElementById("set-video-btn");
 
 roomPage.style.display = "none";
 const characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -96,9 +98,11 @@ currentRoomCode = roomCode;
     const membersFolder = ref(db, roomPath + "/members");
 
     onValue(membersFolder, displayMembers);
+    listenForVideo();
     landingPage.style.display = "none";
 roomPage.style.display = "block";
 roomCodeDisplay.textContent =   roomCode;
+roomCodeDisplay.textContent = roomCode;
 })
  
 .catch((error)=>{console.log(error)});
@@ -141,9 +145,12 @@ update(membersFolder, {
 });
 });
     onValue(membersFolder, displayMembers);
+    listenForVideo();
+     
     roomCodeDisplay.textContent =  joinRoomInput.value;
     landingPage.style.display = "none";
 roomPage.style.display = "block";
+
      
   } else {
     console.log("No room with that code :(");
@@ -182,10 +189,44 @@ function generateRoomCode() {
  
  let player;
 
-function onYouTubeIframeAPIReady() {
+window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player("player", {
         height: "390",
         width: "640",
         videoId: "M7lc1UVf-VE"
+    });
+};
+function getYouTubeVideoId(url) {
+    const urlObject = new URL(url);
+ 
+    if (urlObject.hostname === "youtu.be") {
+        return urlObject.pathname.substring(1);
+    }
+
+    return urlObject.searchParams.get("v");
+}
+ setVideoButton.addEventListener("click", () => {
+    const youtubeUrl = youtubeUrlInput.value;
+    const videoId = getYouTubeVideoId(youtubeUrl);
+
+    console.log("YouTube URL:", youtubeUrl);
+    console.log("Video ID:", videoId);
+
+    if (player) {
+        player.loadVideoById(videoId);
+    }
+
+    const videoRef = ref(db, "rooms/" + currentRoomCode + "/videoId");
+    set(videoRef, videoId);
+});
+function listenForVideo() {
+    const videoRef = ref(db, "rooms/" + currentRoomCode + "/videoId");
+
+    onValue(videoRef, (snapshot) => {
+        const videoId = snapshot.val();
+
+        if (videoId) {
+            player.loadVideoById(videoId);
+        }
     });
 }
