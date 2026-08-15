@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-config.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { ref, set,get,update,onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { ref, set,get,update,onValue ,push} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
  const testRef = ref(db, "test");
 let currentUserId;
@@ -72,8 +72,63 @@ const leaveRoomButton = document.getElementById("leave-room-btn");
 const youtubeUrlInput = document.getElementById("youtube-url-input");
 const setVideoButton = document.getElementById("set-video-btn");
 const resyncButton = document.getElementById("resync-btn");
+const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
+const sendChatButton = document.getElementById("send-chat-btn");
+const playerEmptyState = document.getElementById("player-empty-state");
+const guestControlsButton = document.getElementById("guest-controls-btn");
+
+let guestFollowsHost = false;
+let suppressGuestSync = false;
 
 roomPage.style.display = "none";
+
+function showPlayerEmptyState(message) {
+    if (!playerEmptyState) {
+        return;
+    }
+
+    const title = playerEmptyState.querySelector("h3");
+    const text = playerEmptyState.querySelector("p");
+
+    if (title) {
+        title.textContent = message.title || "Waiting for the host to pick a movie";
+    }
+
+    if (text) {
+        text.textContent = message.text || "Paste a YouTube URL and click “Set Video” to begin the room.";
+    }
+
+    playerEmptyState.style.display = "flex";
+}
+
+function hidePlayerEmptyState() {
+    if (playerEmptyState) {
+        playerEmptyState.style.display = "none";
+    }
+}
+
+function updateGuestControlsButton() {
+    if (!guestControlsButton) {
+        return;
+    }
+
+    if (isHost) {
+        guestControlsButton.style.display = "none";
+        guestControlsButton.classList.remove("is-off");
+        resyncButton.style.display = "none";
+        return;
+    }
+
+    guestControlsButton.style.display = "inline-flex";
+    guestControlsButton.textContent = guestFollowsHost
+        ? "Host controls my screen"
+        : "I control my screen";
+
+    guestControlsButton.classList.toggle("is-off", !guestFollowsHost);
+    resyncButton.style.display = "inline-flex";
+}
+
 const characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
  
 createRoomButton.addEventListener("click", () => {
@@ -85,12 +140,19 @@ const roomCode=generateRoomCode();
 console.log(roomCode);
 currentRoomCode = roomCode;
 isHost = true;
+guestFollowsHost = true;
+updateGuestControlsButton();
  const roomPath = "rooms/" + roomCode;
  const roomRef=ref(db,roomPath);
  set(roomRef, {
    roomCode: roomCode ,
     hostId: currentUserId,
     createdAt:Date.now(),
+    playback: {
+        state: "paused",
+        time: 0,
+        updatedAt: Date.now()
+    },
     members:{
          [currentUserId]: currentUsername
     } 
@@ -101,12 +163,16 @@ isHost = true;
     const membersFolder = ref(db, roomPath + "/members");
 
     onValue(membersFolder, displayMembers);
+    listenForMessages();
+    listenForVideo();
     landingPage.style.display = "none";
-roomPage.style.display = "block";
-roomCodeDisplay.textContent =   roomCode;
-roomCodeDisplay.textContent = roomCode;
+    roomPage.style.display = "block";
+    roomCodeDisplay.textContent = roomCode;
+    showPlayerEmptyState({
+        title: "Ready to start the movie",
+        text: "Paste a YouTube URL and click Set Video to begin the room."
+    });
 })
- 
 .catch((error)=>{console.log(error)});
 
 console.log(roomPath);
@@ -130,6 +196,8 @@ joinRoomButton.addEventListener("click",()=>{console.log("You have joined the ro
     const roomPath = "rooms/" +joinRoomInput.value;
     currentRoomCode = joinRoomInput.value;
     isHost = false;
+    guestFollowsHost = false;
+    updateGuestControlsButton();
     const roomRef=ref(db,roomPath);
     get(roomRef)
     .then((snapshot) => {
@@ -149,10 +217,18 @@ update(membersFolder, {
 });
     onValue(membersFolder, displayMembers);
      
-    roomCodeDisplay.textContent =  joinRoomInput.value;
+    roomCodeDisplay.textContent = joinRoomInput.value;
     landingPage.style.display = "none";
 roomPage.style.display = "block";
+showPlayerEmptyState({
+    title: "Joining the room",
+    text: "Syncing to the host’s current movie and playback position..."
+});
+
+syncGuestToHost({ applyFollowMode: false });
 listenForPlayback();
+listenForVideo();
+listenForMessages();
      
   } else {
     console.log("No room with that code :(");
@@ -177,19 +253,28 @@ function generateRoomCode() {
 }
 
  leaveRoomButton.addEventListener("click", () => {
-     const membersFolder = ref(db, "rooms/" + currentRoomCode + "/members");
-     update(membersFolder, {
+    const membersFolder = ref(db, "rooms/" + currentRoomCode + "/members");
+
+    update(membersFolder, {
         [currentUserId]: null
     })
-    .then(()=>{ console.log("You left room"+currentRoomCode);
-        landingPage.style.display="block";
-        roomPage.style.display = "none";})
+    .then(() => {
+        console.log("You left room" + currentRoomCode);
 
-    .catch((error)=>{console.log(error);});
-    
+        if (player) {
+            player.stopVideo();
+        }
+
+        landingPage.style.display = "block";
+        roomPage.style.display = "none";
+    })
+    .catch((error) => {
+        console.log(error);
+    });
 });
  
  let player;
+ let playerReady = false;
  let lastTime = 0;
 let checkingTime = false;
 
@@ -197,14 +282,17 @@ window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player("player", {
         height: "390",
         width: "640",
-        videoId: "8A7i67ZRjG8",
-
+        playerVars: {
+            autoplay: 0,
+            controls: 1,
+            rel: 0
+        },
         events: {
-    onStateChange: onPlayerStateChange
-}
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange
+        }
     });
 };
-
 function onPlayerStateChange(event) {
 
     if (!isHost) {
@@ -238,27 +326,111 @@ function onPlayerStateChange(event) {
 
     }
 }
+function syncGuestToHost({ applyFollowMode = false } = {}) {
+    if (isHost || !player || !currentRoomCode) {
+        return;
+    }
+
+    const videoRef = ref(db, "rooms/" + currentRoomCode + "/videoId");
+
+    get(videoRef).then((videoSnapshot) => {
+        const videoId = videoSnapshot.val();
+
+        if (!videoId) {
+            showPlayerEmptyState({
+                title: "Waiting for the host to pick a movie",
+                text: "The host hasn’t selected a video yet."
+            });
+            return;
+        }
+
+        if (applyFollowMode) {
+            guestFollowsHost = true;
+            updateGuestControlsButton();
+        }
+
+        const playbackRef = ref(db, "rooms/" + currentRoomCode + "/playback");
+
+        get(playbackRef).then((snapshot) => {
+            const playback = snapshot.val();
+
+            if (!playback) {
+                return;
+            }
+
+        const hostTime = playback.time || 0;
+        const updatedAt = playback.updatedAt || Date.now();
+        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+        let estimatedHostTime = hostTime;
+
+        if (playback.state === "playing") {
+            estimatedHostTime = hostTime + elapsedSinceUpdate;
+        }
+
+        suppressGuestSync = true;
+        player.seekTo(estimatedHostTime, true);
+
+        if (playback.state === "playing") {
+            player.playVideo();
+        }
+
+        if (playback.state === "paused") {
+            player.pauseVideo();
+        }
+
+            setTimeout(() => {
+                suppressGuestSync = false;
+            }, 300);
+        });
+    }).catch(() => {
+        showPlayerEmptyState({
+            title: "Waiting for the host to pick a movie",
+            text: "The host hasn’t selected a video yet."
+        });
+    });
+}
+
 function listenForPlayback() {
+    if (isHost) {
+        return;
+    }
 
     const playbackRef = ref(
         db,
         "rooms/" + currentRoomCode + "/playback"
     );
 
-    get(playbackRef).then((snapshot) => {
-
+    onValue(playbackRef, (snapshot) => {
         const playback = snapshot.val();
 
-        if (!playback) {
-            console.log("No playback state found");
+        if (!guestFollowsHost) {
             return;
         }
 
+        if (!playback || !player) {
+            if (!playback) {
+                console.log("No playback state found");
+            }
+            return;
+        }
+
+        const videoRef = ref(db, "rooms/" + currentRoomCode + "/videoId");
+        get(videoRef).then((videoSnapshot) => {
+            const videoId = videoSnapshot.val();
+
+            if (!videoId) {
+                showPlayerEmptyState({
+                    title: "Waiting for the host to pick a movie",
+                    text: "The host hasn’t selected a video yet."
+                });
+                return;
+            }
+
+            hidePlayerEmptyState();
+
         const hostTime = playback.time || 0;
         const updatedAt = playback.updatedAt || Date.now();
-
-        const elapsedSinceUpdate =
-            (Date.now() - updatedAt) / 1000;
+        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
 
         let estimatedHostTime = hostTime;
 
@@ -270,21 +442,33 @@ function listenForPlayback() {
         console.log("Estimated host time:", estimatedHostTime);
         console.log("Host state:", playback.state);
 
-        // Join at the host's estimated current position
-        player.seekTo(estimatedHostTime, true);
+        if (Math.abs(player.getCurrentTime() - estimatedHostTime) > 0.5 || player.getPlayerState() !== (playback.state === "playing" ? YT.PlayerState.PLAYING : YT.PlayerState.PAUSED)) {
+            suppressGuestSync = true;
+            player.seekTo(estimatedHostTime, true);
 
-        // Join with the host's current state
-        if (playback.state === "playing") {
-            player.playVideo();
+            if (playback.state === "playing") {
+                player.playVideo();
+            }
+
+            if (playback.state === "paused") {
+                player.pauseVideo();
+            }
+
+            setTimeout(() => {
+                suppressGuestSync = false;
+            }, 300);
         }
 
-        if (playback.state === "paused") {
-            player.pauseVideo();
-        }
-
-        console.log("✅ Initial sync complete");
+            console.log("✅ Playback sync complete");
+        }).catch(() => {
+            showPlayerEmptyState({
+                title: "Waiting for the host to pick a movie",
+                text: "The host hasn’t selected a video yet."
+            });
+        });
     });
 }
+
 function checkForSeek() {
 
     if (!isHost) {
@@ -316,6 +500,12 @@ function checkForSeek() {
             state = "paused";
         }
 
+        // Ignore buffering/loading/unstarted states
+        if (!state) {
+            lastTime = currentTime;
+            return;
+        }
+
         set(playbackRef, {
             state: state,
             time: currentTime,
@@ -328,27 +518,98 @@ function checkForSeek() {
 
 setInterval(checkForSeek, 1000);
 function getYouTubeVideoId(url) {
-    const urlObject = new URL(url);
-
-    if (urlObject.hostname === "youtu.be") {
-        return urlObject.pathname.substring(1);
+    if (!url || typeof url !== "string") {
+        return null;
     }
 
-    return urlObject.searchParams.get("v");
+    const trimmedUrl = url.trim();
+
+    try {
+        const urlObject = new URL(trimmedUrl);
+        const hostname = urlObject.hostname.replace(/^www\./, "");
+
+        if (hostname === "youtu.be") {
+            const pathParts = urlObject.pathname.split("/").filter(Boolean);
+            return pathParts[0] || null;
+        }
+
+        if (hostname === "youtube.com" || hostname === "m.youtube.com" || hostname === "music.youtube.com") {
+            const videoParam = urlObject.searchParams.get("v");
+            if (videoParam) {
+                return videoParam;
+            }
+
+            const pathParts = urlObject.pathname.split("/").filter(Boolean);
+            if (pathParts[0] === "embed" && pathParts[1]) {
+                return pathParts[1];
+            }
+
+            if ((pathParts[0] === "shorts" || pathParts[0] === "live") && pathParts[1]) {
+                return pathParts[1];
+            }
+        }
+
+        return null;
+    } catch (error) {
+        const fallbackMatch = trimmedUrl.match(/(?:v=|\/)([A-Za-z0-9_-]{11})(?:[?&]|$)/);
+        return fallbackMatch ? fallbackMatch[1] : null;
+    }
 }
- setVideoButton.addEventListener("click", () => {
-    const youtubeUrl = youtubeUrlInput.value;
+setVideoButton.addEventListener("click", () => {
+
+    if (!isHost) {
+        console.log("Only the host can change the video.");
+        return;
+    }
+
+    if (!currentRoomCode) {
+        console.log("No room selected yet.");
+        return;
+    }
+
+    const youtubeUrl = youtubeUrlInput.value.trim();
     const videoId = getYouTubeVideoId(youtubeUrl);
 
     console.log("YouTube URL:", youtubeUrl);
     console.log("Video ID:", videoId);
 
-    if (player) {
-        player.loadVideoById(videoId);
+    if (!videoId) {
+        console.log("❌ Invalid YouTube URL");
+        showPlayerEmptyState({
+            title: "Invalid YouTube link",
+            text: "Paste a valid YouTube URL and click Set Video."
+        });
+        return;
     }
 
-    const videoRef = ref(db, "rooms/" + currentRoomCode + "/videoId");
-    set(videoRef, videoId);
+    hidePlayerEmptyState();
+
+    const videoRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/videoId"
+    );
+
+    set(videoRef, videoId)
+        .then(() => {
+            if (player && typeof player.loadVideoById === "function") {
+                try {
+                    player.loadVideoById(videoId);
+                } catch (error) {
+                    console.log("Player load error:", error);
+                }
+            }
+            youtubeUrlInput.value = "";
+            console.log("✅ Video saved to Firebase:", videoId);
+        })
+        .catch((error) => {
+            console.log("❌ Error saving video:", error);
+        });
+});
+
+youtubeUrlInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        setVideoButton.click();
+    }
 });
 function listenForVideo() {
     const videoRef = ref(db, "rooms/" + currentRoomCode + "/videoId");
@@ -356,11 +617,33 @@ function listenForVideo() {
     onValue(videoRef, (snapshot) => {
         const videoId = snapshot.val();
 
-        if (videoId) {
+        if (!videoId) {
+            showPlayerEmptyState({
+                title: isHost ? "Ready to start the movie" : "Waiting for the host to pick a movie",
+                text: isHost
+                    ? "Paste a YouTube URL and click Set Video to begin the room."
+                    : "The host hasn’t picked a video yet."
+            });
+
+            if (player && typeof player.stopVideo === "function") {
+                player.stopVideo();
+            }
+            return;
+        }
+
+        if (!player) {
+            console.log("YouTube player is not ready yet.");
+            return;
+        }
+
+        hidePlayerEmptyState();
+
+        try {
             player.loadVideoById(videoId);
+        } catch (error) {
+            console.log("Video load error:", error);
         }
     });
-    
 }
 function checkGuestSync() {
 
@@ -372,6 +655,11 @@ function checkGuestSync() {
         db,
         "rooms/" + currentRoomCode + "/playback"
     );
+
+    if (!guestFollowsHost) {
+        resyncButton.style.display = "block";
+        return;
+    }
 
     get(playbackRef).then((snapshot) => {
 
@@ -401,58 +689,43 @@ console.log("Estimated host time:", estimatedHostTime);
 console.log("Guest time:", guestTime);
 console.log("Difference:", difference);
 
-      if (difference > 3) {
-            console.log("⚠️ You are out of sync!");
-            resyncButton.style.display = "block";
+      if (guestFollowsHost) {
+            if (difference > 3) {
+                console.log("⚠️ You are out of sync!");
+                resyncButton.style.display = "block";
+            } else {
+                resyncButton.style.display = "none";
+            }
         } else {
-            resyncButton.style.display = "none";
+            resyncButton.style.display = "inline-flex";
         }
     });
 }
 
 setInterval(checkGuestSync, 1000);
+guestControlsButton.addEventListener("click", () => {
+    if (isHost || !currentRoomCode) {
+        return;
+    }
+
+    guestFollowsHost = !guestFollowsHost;
+    updateGuestControlsButton();
+
+    if (guestFollowsHost) {
+        syncGuestToHost({ applyFollowMode: true });
+    }
+});
+
+updateGuestControlsButton();
+
 resyncButton.addEventListener("click", () => {
+    if (!currentRoomCode || !player || isHost) {
+        return;
+    }
 
-    const playbackRef = ref(
-        db,
-        "rooms/" + currentRoomCode + "/playback"
-    );
-
-    get(playbackRef).then((snapshot) => {
-
-        const playback = snapshot.val();
-
-        if (!playback) {
-            return;
-        }
-
-        const hostTime = playback.time || 0;
-        const updatedAt = playback.updatedAt || Date.now();
-
-        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
-
-        let estimatedHostTime = hostTime;
-
-        if (playback.state === "playing") {
-            estimatedHostTime = hostTime + elapsedSinceUpdate;
-        }
-
-        player.seekTo(estimatedHostTime, true);
-
-        if (playback.state === "playing") {
-            player.playVideo();
-        }
-
-        if (playback.state === "paused") {
-            player.pauseVideo();
-        }
-
-        resyncButton.style.display = "none";
-
-        console.log("Firebase host time:", hostTime);
-        console.log("Estimated host time:", estimatedHostTime);
-        console.log("✅ Resynced to host at:", estimatedHostTime);
-    });
+    syncGuestToHost({ applyFollowMode: false });
+    resyncButton.style.display = "none";
+    console.log("✅ Resync pressed. Guest remains in manual mode unless they choose host control.");
 });
 function updateHostTime() {
 
@@ -481,3 +754,86 @@ function updateHostTime() {
 }
 
 setInterval(updateHostTime, 1000);
+
+
+sendChatButton.addEventListener("click", () => {
+    const message = chatInput.value.trim();
+
+    if (message === "") {
+        return;
+    }
+
+    const messagesRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/messages"
+    );
+
+    const newMessageRef = push(messagesRef);
+
+    set(newMessageRef, {
+        username: currentUsername,
+        userId: currentUserId,
+        text: message,
+        timestamp: Date.now()
+    });
+
+    chatInput.value = "";
+    chatInput.focus();
+});
+function listenForMessages() {
+
+    const messagesRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/messages"
+    );
+
+    onValue(messagesRef, (snapshot) => {
+
+        const messages = snapshot.val() || {};
+
+        chatMessages.innerHTML = "";
+
+        for (const messageId in messages) {
+
+            const message = messages[messageId];
+
+            const messageItem = document.createElement("div");
+
+            const username = document.createElement("strong");
+            username.textContent = message.username;
+
+            const text = document.createElement("span");
+            text.textContent = message.text;
+
+            const time = document.createElement("small");
+
+            const messageDate = new Date(message.timestamp);
+
+            time.textContent = messageDate.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+
+            messageItem.appendChild(username);
+            messageItem.appendChild(text);
+            messageItem.appendChild(time);
+
+            chatMessages.appendChild(messageItem);
+        }
+    });
+}
+
+function onPlayerReady() {
+    playerReady = true;
+    console.log("YouTube player is ready");
+
+    if (!currentRoomCode) {
+        showPlayerEmptyState({
+            title: "Player ready",
+            text: "Create or join a room to start watching together."
+        });
+        return;
+    }
+
+    listenForVideo();
+}
