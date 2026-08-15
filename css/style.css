@@ -520,6 +520,127 @@ footer a:hover {
     text-decoration: underline;
 }
 
+@media (max-width: 980px) {
+    #room-page {
+        width: min(94vw, 1100px);
+        padding: 18px 12px 30px;
+    }
+
+    .room-body {
+        grid-template-columns: 1fr;
+    }
+
+    #chat-sidebar {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        justify-content: flex-start;
+        padding-top: 20px;
+    }
+
+    #landing-page {
+        width: min(92vw, 520px);
+        padding: 28px 16px 0;
+    }
+
+    #landing-page p {
+        margin-bottom: 24px;
+    }
+
+    #create-room-btn,
+    #join-room-btn,
+    #set-video-btn,
+    #resync-btn,
+    #leave-room-btn,
+    #send-chat-btn {
+        width: 100%;
+        padding: 14px 18px;
+    }
+
+    #join-room-input,
+    #youtube-url-input,
+    #chat-input {
+        width: 100%;
+    }
+
+    .room-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    #member-wrap {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    #member-list {
+        justify-content: flex-start;
+    }
+
+    .video-stage,
+    #player {
+        min-height: 220px;
+    }
+
+    #player {
+        aspect-ratio: 16 / 9;
+    }
+
+    #player iframe {
+        min-height: 220px;
+    }
+
+    .video-controls {
+        grid-template-columns: 1fr;
+    }
+
+    #chat-input-area {
+        flex-direction: column;
+    }
+
+    .reaction-bar {
+        gap: 8px;
+    }
+
+    .reaction-btn {
+        width: 42px;
+        height: 42px;
+        font-size: 1.3rem;
+    }
+
+    footer {
+        margin-top: 20px;
+        padding: 18px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: clamp(2.2rem, 12vw, 3rem);
+    }
+
+    #room-page h2 {
+        font-size: clamp(1.3rem, 7vw, 1.8rem);
+    }
+
+    .room-label {
+        letter-spacing: 0.12em;
+    }
+
+    #room-code-display {
+        letter-spacing: 0.08em;
+    }
+
+    #member-list li {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+}
+
 @media (max-width: 900px) {
     .room-body {
         grid-template-columns: 1fr;
