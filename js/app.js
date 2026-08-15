@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-config.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { ref, set,get,update,onValue ,push} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { ref, set,get,update,onValue ,push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
  const testRef = ref(db, "test");
 let currentUserId;
@@ -223,6 +223,78 @@ function updateGuestControlsButton() {
 }
 
 const characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function touchRoomActivity(roomCodeValue = currentRoomCode) {
+    if (!roomCodeValue) {
+        return;
+    }
+
+    const roomRef = ref(db, "rooms/" + roomCodeValue);
+    update(roomRef, {
+        lastActivity: Date.now()
+    }).catch((error) => {
+        console.log("Room activity update failed:", error);
+    });
+}
+
+function pruneInactiveRoom(roomCodeValue) {
+    if (!roomCodeValue) {
+        return;
+    }
+
+    const membersRef = ref(db, "rooms/" + roomCodeValue + "/members");
+
+    get(membersRef).then((snapshot) => {
+        const members = snapshot.val() || {};
+
+        if (Object.keys(members).length === 0) {
+            const roomRef = ref(db, "rooms/" + roomCodeValue);
+            remove(roomRef).catch((error) => {
+                console.log("Room prune failed:", error);
+            });
+        }
+    }).catch((error) => {
+        console.log("Prune room check failed:", error);
+    });
+}
+
+function cleanupRoom(roomCodeValue) {
+    if (!roomCodeValue) {
+        return;
+    }
+
+    const roomRef = ref(db, "rooms/" + roomCodeValue);
+    remove(roomRef).catch((error) => {
+        console.log("Room cleanup failed:", error);
+    });
+}
+
+setInterval(() => {
+    const rootRoomsRef = ref(db, "rooms");
+
+    get(rootRoomsRef).then((snapshot) => {
+        const rooms = snapshot.val() || {};
+        const now = Date.now();
+
+        for (const roomCodeValue in rooms) {
+            const room = rooms[roomCodeValue] || {};
+            const members = room.members || {};
+            const hostId = room.hostId;
+            const hasVideo = !!room.videoId;
+            const lastActivity = room.lastActivity || room.createdAt || 0;
+            const memberCount = Object.keys(members).length;
+
+            const hostMissingTooLong = !!hostId && !members[hostId] && (now - lastActivity > 7 * 60 * 1000);
+            const emptyRoomTooLong = memberCount === 0 && !hasVideo && (now - lastActivity > 15 * 60 * 1000);
+
+            if (hostMissingTooLong || emptyRoomTooLong) {
+                cleanupRoom(roomCodeValue);
+            }
+        }
+    }).catch((error) => {
+        console.log("Inactive room cleanup failed:", error);
+    });
+}, 60000);
  
 createRoomButton.addEventListener("click", () => {
     if (!currentUserId) {
@@ -241,6 +313,7 @@ updateGuestControlsButton();
    roomCode: roomCode ,
     hostId: currentUserId,
     createdAt:Date.now(),
+    lastActivity: Date.now(),
     playback: {
         state: "paused",
         time: 0,
@@ -252,6 +325,9 @@ updateGuestControlsButton();
 })
 .then(() => {
     console.log("Room data saved");
+
+    onDisconnect(roomRef).remove();
+    onDisconnect(ref(db, roomPath + "/members/" + currentUserId)).remove();
 
     const membersFolder = ref(db, roomPath + "/members");
 
@@ -310,7 +386,8 @@ update(membersFolder, {
 });
 });
     onValue(membersFolder, displayMembers);
-     
+    onDisconnect(ref(db, roomPath + "/members/" + currentUserId)).remove();
+
     roomCodeDisplay.textContent = joinRoomInput.value;
     landingPage.style.display = "none";
 roomPage.style.display = "block";
@@ -319,6 +396,7 @@ showPlayerEmptyState({
     text: "Syncing to the host’s current movie and playback position..."
 });
 
+update(roomRef, { lastActivity: Date.now() });
 syncGuestToHost({ applyFollowMode: false });
 listenForPlayback();
 listenForVideo();
@@ -345,24 +423,45 @@ function generateRoomCode() {
 }
 
  leaveRoomButton.addEventListener("click", () => {
-    const membersFolder = ref(db, "rooms/" + currentRoomCode + "/members");
+    if (!currentRoomCode) {
+        return;
+    }
 
-    update(membersFolder, {
-        [currentUserId]: null
-    })
-    .then(() => {
-        console.log("You left room" + currentRoomCode);
+    if (isHost) {
+        const roomRef = ref(db, "rooms/" + currentRoomCode);
+        update(roomRef, {
+            hostId: null,
+            lastActivity: Date.now()
+        }).then(() => {
+            cleanupRoom(currentRoomCode);
+        }).catch((error) => {
+            console.log("Host leave cleanup failed:", error);
+        });
+    } else {
+        const membersFolder = ref(db, "rooms/" + currentRoomCode + "/members");
 
-        if (player) {
-            player.stopVideo();
-        }
+        update(membersFolder, {
+            [currentUserId]: null
+        })
+        .then(() => {
+            pruneInactiveRoom(currentRoomCode);
+            console.log("You left room" + currentRoomCode);
+        })
+        .catch((error) => {
+            console.log(error);
+        });
+    }
 
-        landingPage.style.display = "block";
-        roomPage.style.display = "none";
-    })
-    .catch((error) => {
-        console.log(error);
-    });
+    if (player) {
+        player.stopVideo();
+    }
+
+    landingPage.style.display = "block";
+    roomPage.style.display = "none";
+    currentRoomCode = null;
+    isHost = false;
+    guestFollowsHost = false;
+    updateGuestControlsButton();
 });
  
  let player;
