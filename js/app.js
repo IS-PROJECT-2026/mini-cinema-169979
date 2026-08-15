@@ -222,6 +222,30 @@ function updateGuestControlsButton() {
     resyncButton.style.display = "inline-flex";
 }
 
+function handleGuestReconnectSync() {
+    if (isHost || !currentRoomCode || !player || !playerReady) {
+        return;
+    }
+
+    setTimeout(() => {
+        syncGuestToHost({ applyFollowMode: guestFollowsHost });
+    }, 250);
+}
+
+window.addEventListener("online", () => {
+    if (!currentRoomCode || isHost || !player) {
+        return;
+    }
+
+    handleGuestReconnectSync();
+});
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        handleGuestReconnectSync();
+    }
+});
+
 const characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 function touchRoomActivity(roomCodeValue = currentRoomCode) {
@@ -397,9 +421,9 @@ showPlayerEmptyState({
 });
 
 update(roomRef, { lastActivity: Date.now() });
-syncGuestToHost({ applyFollowMode: false });
 listenForPlayback();
 listenForVideo();
+handleGuestReconnectSync();
 listenForMessages();
 listenForReactions();
   }
@@ -1027,4 +1051,5 @@ function onPlayerReady() {
     }
 
     listenForVideo();
+    handleGuestReconnectSync();
 }
