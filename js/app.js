@@ -6,6 +6,7 @@ import { ref, set,get,update,onValue } from "https://www.gstatic.com/firebasejs/
 let currentUserId;
 let currentUsername;
 let currentRoomCode;
+let isHost = false;
 
 const adjectives = [
     "Ambitious",
@@ -70,6 +71,7 @@ const roomCodeDisplay = document.getElementById("room-code-display");
 const leaveRoomButton = document.getElementById("leave-room-btn");
 const youtubeUrlInput = document.getElementById("youtube-url-input");
 const setVideoButton = document.getElementById("set-video-btn");
+const resyncButton = document.getElementById("resync-btn");
 
 roomPage.style.display = "none";
 const characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -82,6 +84,7 @@ createRoomButton.addEventListener("click", () => {
 const roomCode=generateRoomCode();
 console.log(roomCode);
 currentRoomCode = roomCode;
+isHost = true;
  const roomPath = "rooms/" + roomCode;
  const roomRef=ref(db,roomPath);
  set(roomRef, {
@@ -126,6 +129,7 @@ function displayMembers(snapshot) {
 joinRoomButton.addEventListener("click",()=>{console.log("You have joined the room :",joinRoomInput.value);
     const roomPath = "rooms/" +joinRoomInput.value;
     currentRoomCode = joinRoomInput.value;
+    isHost = false;
     const roomRef=ref(db,roomPath);
     get(roomRef)
     .then((snapshot) => {
@@ -148,7 +152,7 @@ update(membersFolder, {
     roomCodeDisplay.textContent =  joinRoomInput.value;
     landingPage.style.display = "none";
 roomPage.style.display = "block";
-
+listenForPlayback();
      
   } else {
     console.log("No room with that code :(");
@@ -187,7 +191,8 @@ function generateRoomCode() {
  
  let player;
  let lastTime = 0;
- 
+let checkingTime = false;
+
 window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player("player", {
         height: "390",
@@ -202,6 +207,10 @@ window.onYouTubeIframeAPIReady = function () {
 
 function onPlayerStateChange(event) {
 
+    if (!isHost) {
+        return;
+    }
+
     const playbackRef = ref(
         db,
         "rooms/" + currentRoomCode + "/playback"
@@ -210,20 +219,77 @@ function onPlayerStateChange(event) {
     const currentTime = player.getCurrentTime();
 
     if (event.data === YT.PlayerState.PLAYING) {
+
         set(playbackRef, {
             state: "playing",
-            time: currentTime
+            time: currentTime,
+            updatedAt: Date.now()
         });
+
     }
 
     if (event.data === YT.PlayerState.PAUSED) {
+
         set(playbackRef, {
             state: "paused",
-            time: currentTime
+            time: currentTime,
+            updatedAt: Date.now()
         });
+
     }
 }
+function listenForPlayback() {
+
+    const playbackRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/playback"
+    );
+
+    get(playbackRef).then((snapshot) => {
+
+        const playback = snapshot.val();
+
+        if (!playback) {
+            console.log("No playback state found");
+            return;
+        }
+
+        const hostTime = playback.time || 0;
+        const updatedAt = playback.updatedAt || Date.now();
+
+        const elapsedSinceUpdate =
+            (Date.now() - updatedAt) / 1000;
+
+        let estimatedHostTime = hostTime;
+
+        if (playback.state === "playing") {
+            estimatedHostTime = hostTime + elapsedSinceUpdate;
+        }
+
+        console.log("Firebase host time:", hostTime);
+        console.log("Estimated host time:", estimatedHostTime);
+        console.log("Host state:", playback.state);
+
+        // Join at the host's estimated current position
+        player.seekTo(estimatedHostTime, true);
+
+        // Join with the host's current state
+        if (playback.state === "playing") {
+            player.playVideo();
+        }
+
+        if (playback.state === "paused") {
+            player.pauseVideo();
+        }
+
+        console.log("✅ Initial sync complete");
+    });
+}
 function checkForSeek() {
+
+    if (!isHost) {
+        return;
+    }
 
     if (!player) {
         return;
@@ -238,9 +304,22 @@ function checkForSeek() {
             "rooms/" + currentRoomCode + "/playback"
         );
 
+        const currentState = player.getPlayerState();
+
+        let state;
+
+        if (currentState === YT.PlayerState.PLAYING) {
+            state = "playing";
+        }
+
+        if (currentState === YT.PlayerState.PAUSED) {
+            state = "paused";
+        }
+
         set(playbackRef, {
-            state: "playing",
-            time: currentTime
+            state: state,
+            time: currentTime,
+            updatedAt: Date.now()
         });
     }
 
@@ -283,6 +362,122 @@ function listenForVideo() {
     });
     
 }
+function checkGuestSync() {
 
+    if (isHost || !player) {
+        return;
+    }
 
- 
+    const playbackRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/playback"
+    );
+
+    get(playbackRef).then((snapshot) => {
+
+        const playback = snapshot.val();
+
+        if (!playback) {
+            return;
+        }
+
+      const hostTime = playback.time || 0;
+const updatedAt = playback.updatedAt || Date.now();
+
+const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+
+let estimatedHostTime = hostTime;
+
+if (playback.state === "playing") {
+    estimatedHostTime = hostTime + elapsedSinceUpdate;
+}
+
+const guestTime = player.getCurrentTime();
+
+const difference = Math.abs(estimatedHostTime - guestTime);
+
+console.log("Firebase host time:", hostTime);
+console.log("Estimated host time:", estimatedHostTime);
+console.log("Guest time:", guestTime);
+console.log("Difference:", difference);
+
+      if (difference > 3) {
+            console.log("⚠️ You are out of sync!");
+            resyncButton.style.display = "block";
+        } else {
+            resyncButton.style.display = "none";
+        }
+    });
+}
+
+setInterval(checkGuestSync, 1000);
+resyncButton.addEventListener("click", () => {
+
+    const playbackRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/playback"
+    );
+
+    get(playbackRef).then((snapshot) => {
+
+        const playback = snapshot.val();
+
+        if (!playback) {
+            return;
+        }
+
+        const hostTime = playback.time || 0;
+        const updatedAt = playback.updatedAt || Date.now();
+
+        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+
+        let estimatedHostTime = hostTime;
+
+        if (playback.state === "playing") {
+            estimatedHostTime = hostTime + elapsedSinceUpdate;
+        }
+
+        player.seekTo(estimatedHostTime, true);
+
+        if (playback.state === "playing") {
+            player.playVideo();
+        }
+
+        if (playback.state === "paused") {
+            player.pauseVideo();
+        }
+
+        resyncButton.style.display = "none";
+
+        console.log("Firebase host time:", hostTime);
+        console.log("Estimated host time:", estimatedHostTime);
+        console.log("✅ Resynced to host at:", estimatedHostTime);
+    });
+});
+function updateHostTime() {
+
+    if (!isHost || !player) {
+        return;
+    }
+
+    const state = player.getPlayerState();
+
+    if (state !== YT.PlayerState.PLAYING) {
+        return;
+    }
+
+    const currentTime = player.getCurrentTime();
+
+    const playbackRef = ref(
+        db,
+        "rooms/" + currentRoomCode + "/playback"
+    );
+
+    set(playbackRef, {
+        state: "playing",
+        time: currentTime,
+        updatedAt: Date.now()
+    });
+}
+
+setInterval(updateHostTime, 1000);
