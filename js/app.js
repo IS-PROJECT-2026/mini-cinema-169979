@@ -77,9 +77,11 @@ const chatInput = document.getElementById("chat-input");
 const sendChatButton = document.getElementById("send-chat-btn");
 const playerEmptyState = document.getElementById("player-empty-state");
 const guestControlsButton = document.getElementById("guest-controls-btn");
+const reactionOverlay = document.getElementById("reaction-overlay");
 
 let guestFollowsHost = false;
 let suppressGuestSync = false;
+const seenReactionIds = new Set();
 
 roomPage.style.display = "none";
 
@@ -106,6 +108,97 @@ function hidePlayerEmptyState() {
     if (playerEmptyState) {
         playerEmptyState.style.display = "none";
     }
+}
+
+function showReactionBurst(emoji) {
+    const overlayTarget = reactionOverlay || document.getElementById("player");
+
+    if (!overlayTarget) {
+        return;
+    }
+
+    const burst = document.createElement("div");
+    burst.className = "reaction-burst";
+    burst.textContent = emoji;
+
+    const startX = 18 + Math.random() * 64;
+    const startY = 70 + Math.random() * 18;
+    const drift = (Math.random() * 180 - 90).toFixed(1);
+
+    burst.style.left = `${startX}%`;
+    burst.style.top = `${startY}%`;
+    burst.style.setProperty("--drift", `${drift}px`);
+    burst.style.setProperty("--rise", `${(Math.random() * 100 + 80).toFixed(1)}px`);
+
+    overlayTarget.appendChild(burst);
+
+    setTimeout(() => {
+        burst.remove();
+    }, 2000);
+}
+
+function sendReaction(emoji) {
+    if (!currentRoomCode) {
+        showReactionBurst(emoji);
+        return;
+    }
+
+    const reactionsRef = ref(db, "rooms/" + currentRoomCode + "/reactions");
+    const newReactionRef = push(reactionsRef);
+    seenReactionIds.add(newReactionRef.key);
+    showReactionBurst(emoji);
+
+    const reactionPayload = {
+        emoji,
+        username: currentUsername || "Guest",
+        timestamp: Date.now()
+    };
+
+    set(newReactionRef, reactionPayload)
+        .catch((error) => {
+            console.log("Reaction send failed:", error);
+            seenReactionIds.delete(newReactionRef.key);
+        });
+}
+
+document.addEventListener("click", (event) => {
+    const reactionButton = event.target.closest(".reaction-btn");
+
+    if (!reactionButton) {
+        return;
+    }
+
+    const emoji = reactionButton.dataset.emoji;
+    if (!emoji) {
+        return;
+    }
+
+    sendReaction(emoji);
+});
+
+function listenForReactions() {
+    if (!currentRoomCode) {
+        return;
+    }
+
+    const reactionsRef = ref(db, "rooms/" + currentRoomCode + "/reactions");
+
+    onValue(reactionsRef, (snapshot) => {
+        const reactions = snapshot.val() || {};
+
+        for (const reactionId in reactions) {
+            if (!reactions[reactionId] || !reactions[reactionId].emoji) {
+                continue;
+            }
+
+            if (seenReactionIds.has(reactionId)) {
+                continue;
+            }
+
+            seenReactionIds.add(reactionId);
+            showReactionBurst(reactions[reactionId].emoji);
+        }
+    });
 }
 
 function updateGuestControlsButton() {
@@ -164,6 +257,7 @@ updateGuestControlsButton();
 
     onValue(membersFolder, displayMembers);
     listenForMessages();
+    listenForReactions();
     listenForVideo();
     landingPage.style.display = "none";
     roomPage.style.display = "block";
@@ -229,9 +323,7 @@ syncGuestToHost({ applyFollowMode: false });
 listenForPlayback();
 listenForVideo();
 listenForMessages();
-     
-  } else {
-    console.log("No room with that code :(");
+listenForReactions();
   }
 })
 .catch((error) => {

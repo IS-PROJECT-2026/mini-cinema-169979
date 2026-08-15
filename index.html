@@ -32,12 +32,24 @@
                 <ul id="member-list"></ul>
             </div>
 
-            <div id="player" aria-live="polite">
-                <div id="player-empty-state" class="player-empty-state">
-                    <div class="player-empty-icon">▶</div>
-                    <h3>Waiting for the host to pick a movie</h3>
-                    <p>Paste a YouTube URL and click “Set Video” to begin the room.</p>
+            <div class="video-stage">
+                <div id="player" aria-live="polite">
+                    <div id="player-empty-state" class="player-empty-state">
+                        <div class="player-empty-icon">▶</div>
+                        <h3>Waiting for the host to pick a movie</h3>
+                        <p>Paste a YouTube URL and click “Set Video” to begin the room.</p>
+                    </div>
                 </div>
+                <div id="reaction-overlay" aria-live="polite"></div>
+            </div>
+
+            <div id="reaction-bar" class="reaction-bar" aria-label="React to the movie">
+                <button type="button" class="reaction-btn" data-emoji="🔥">🔥</button>
+                <button type="button" class="reaction-btn" data-emoji="👏">👏</button>
+                <button type="button" class="reaction-btn" data-emoji="😍">😍</button>
+                <button type="button" class="reaction-btn" data-emoji="😂">😂</button>
+                <button type="button" class="reaction-btn" data-emoji="😮">😮</button>
+                <button type="button" class="reaction-btn" data-emoji="💔">💔</button>
             </div>
 
             <div class="video-controls">
