@@ -250,6 +250,16 @@ h1 {
     color: var(--text);
 }
 
+.video-stage {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-height: 380px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.05);
+}
+
 #player {
     position: relative;
     width: 100%;
@@ -260,6 +270,7 @@ h1 {
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.05);
+    z-index: 1;
 }
 
 #player iframe {
@@ -267,6 +278,8 @@ h1 {
     height: 100% !important;
     min-height: 380px;
     display: block;
+    position: relative;
+    z-index: 1;
 }
 
 .player-empty-state {
@@ -280,6 +293,7 @@ h1 {
     padding: 24px;
     text-align: center;
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.82), rgba(17, 24, 39, 0.94));
+    z-index: 2;
 }
 
 .player-empty-icon {
@@ -319,11 +333,79 @@ h1 {
     min-width: 0;
 }
 
+.reaction-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin: 12px 0 14px;
+    padding: 12px 10px;
+    background: rgba(15, 23, 42, 0.58);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.reaction-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(17, 24, 39, 0.9);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.24);
+    font-size: 1.5rem;
+    display: grid;
+    place-items: center;
+    pointer-events: auto;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.reaction-btn:hover {
+    transform: translateY(-2px) scale(1.04);
+    border-color: rgba(139, 92, 246, 0.8);
+}
+
 #set-video-btn,
 #resync-btn,
 #guest-controls-btn {
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+#reaction-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 10;
+    border-radius: var(--radius-lg);
+}
+
+.reaction-burst {
+    position: absolute;
+    left: 50%;
+    top: 75%;
+    font-size: clamp(2rem, 4vw, 3rem);
+    transform: translate(-50%, 0) scale(0.8);
+    filter: drop-shadow(0 12px 16px rgba(0, 0, 0, 0.25));
+    animation: reaction-pop 1.6s ease forwards;
+    user-select: none;
+}
+
+@keyframes reaction-pop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.5);
+    }
+    15% {
+        opacity: 1;
+    }
+    35% {
+        transform: translate(calc(-50% + var(--drift, 0px) * 0.2), -18px) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--drift, 0px)), -130px) scale(1.25);
+    }
 }
 
 #chat-sidebar {
