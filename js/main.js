@@ -40,25 +40,34 @@ function usernameTaken(members, username) {
 // refreshes, we can silently rejoin the same room instead of leaving it.
 // sessionStorage is cleared when the tab is fully closed, which is the
 // correct behaviour — closing the tab should count as leaving the room.
+//
+// We also record the moment the session was saved (mc_leftAt). On
+// reload, if more than RECONNECT_GRACE_PERIOD_MS has passed since then,
+// we treat the user as fully disconnected instead of silently rejoining.
+const RECONNECT_GRACE_PERIOD_MS = 7 * 60 * 1000; // 7 minutes
+
 function saveSession() {
     if (!currentRoomCode || !currentUserId || !currentUsername) return;
     sessionStorage.setItem("mc_roomCode", currentRoomCode);
     sessionStorage.setItem("mc_isHost", isHost ? "1" : "0");
     sessionStorage.setItem("mc_username", currentUsername);
+    sessionStorage.setItem("mc_leftAt", String(serverNow()));
 }
 
 function clearSession() {
     sessionStorage.removeItem("mc_roomCode");
     sessionStorage.removeItem("mc_isHost");
     sessionStorage.removeItem("mc_username");
+    sessionStorage.removeItem("mc_leftAt");
 }
 
 function getSavedSession() {
     const roomCode = sessionStorage.getItem("mc_roomCode");
     const savedIsHost = sessionStorage.getItem("mc_isHost") === "1";
     const username = sessionStorage.getItem("mc_username");
+    const leftAt = Number(sessionStorage.getItem("mc_leftAt")) || 0;
     if (roomCode && username) {
-        return { roomCode, isHost: savedIsHost, username };
+        return { roomCode, isHost: savedIsHost, username, leftAt };
     }
     return null;
 }
@@ -115,6 +124,16 @@ window.addEventListener("beforeunload", () => {
 });
 // ----------------------------------------------------------------------
 
+// --- Host resume-on-refresh state --------------------------------------
+// When the host refreshes, listenForVideo() would otherwise call
+// loadVideoById(videoId) with no start time, which always restarts the
+// video at 0:00. To avoid that, attemptRejoin() computes where playback
+// should resume and stashes it here; listenForVideo() consumes it once
+// (for the matching videoId) and then clears it so later video changes
+// still load fresh from 0 as expected.
+let rejoinPlaybackState = null; // { videoId, time, state } | null
+// ----------------------------------------------------------------------
+
 signInAnonymously(auth)
     .then((userCredential) => {
         console.log("Anonymous login successful");
@@ -124,7 +143,7 @@ signInAnonymously(auth)
         const saved = getSavedSession();
         if (saved) {
             currentUsername = saved.username;
-            attemptRejoin(saved.roomCode, saved.isHost);
+            attemptRejoin(saved.roomCode, saved.isHost, saved.leftAt);
         } else {
             currentUsername = generateUsername();
         }
@@ -134,7 +153,23 @@ signInAnonymously(auth)
     });
 
 // --- Rejoin after refresh ---------------------------------------------
-function attemptRejoin(savedRoomCode, savedIsHost) {
+function attemptRejoin(savedRoomCode, savedIsHost, leftAt) {
+    // Been away longer than the grace period? Treat it as a full
+    // disconnect instead of silently rejoining — drop any lingering
+    // presence and send them back to a clean landing page.
+    const timeAway = serverNow() - (leftAt || 0);
+    if (timeAway > RECONNECT_GRACE_PERIOD_MS) {
+        if (savedIsHost) {
+            update(ref(db, "rooms/" + savedRoomCode), { hostId: null }).catch(() => {});
+        } else {
+            update(ref(db, "rooms/" + savedRoomCode + "/members"), { [currentUserId]: null }).catch(() => {});
+        }
+        pruneInactiveRoom(savedRoomCode);
+        clearSession();
+        currentUsername = generateUsername();
+        return;
+    }
+
     const roomRef = ref(db, "rooms/" + savedRoomCode);
     get(roomRef).then((snapshot) => {
         if (!snapshot.exists()) {
@@ -143,9 +178,28 @@ function attemptRejoin(savedRoomCode, savedIsHost) {
             return;
         }
 
+        const roomData = snapshot.val();
+
         currentRoomCode = savedRoomCode;
         isHost = savedIsHost;
         guestFollowsHost = true;
+
+        // Host: figure out where playback should resume instead of
+        // restarting the video at 0:00 when listenForVideo() re-fires.
+        if (isHost && roomData.videoId && roomData.playback) {
+            const playback = roomData.playback;
+            const hostTime = playback.time || 0;
+            const updatedAt = playback.updatedAt || serverNow();
+            const elapsedSinceUpdate = (serverNow() - updatedAt) / 1000;
+            let estimatedTime = hostTime;
+            if (playback.state === "playing") estimatedTime = hostTime + elapsedSinceUpdate;
+
+            rejoinPlaybackState = {
+                videoId: roomData.videoId,
+                time: Math.max(0, estimatedTime),
+                state: playback.state
+            };
+        }
 
         const roomPath = "rooms/" + savedRoomCode;
 
@@ -160,6 +214,7 @@ function attemptRejoin(savedRoomCode, savedIsHost) {
 
         touchRoomActivity(savedRoomCode);
         updateGuestControlsButton();
+        updateVideoControlsVisibility();
         onValue(membersFolder, displayMembers);
 
         resetChatScrollState();
@@ -612,33 +667,18 @@ function generateRoomCode() {
     return roomCode;
 }
 
+// --- Leave room -------------------------------------------------------
+// Leaving should feel instant: we switch back to the landing page
+// immediately and let the Firebase cleanup happen in the background,
+// instead of waiting on a network round trip first.
 leaveRoomButton.addEventListener("click", () => {
     if (!currentRoomCode) return;
 
-    // Intentional leave — cancel beforeunload's session save and clear it
-    clearSession();
-    // Now let the disconnect fire naturally (or do it manually below)
-    cancelDisconnect();
+    const roomCodeToLeave = currentRoomCode;
+    const wasHost = isHost;
 
-    if (isHost) {
-        const roomRef = ref(db, "rooms/" + currentRoomCode);
-        update(roomRef, {
-            hostId: null,
-            lastActivity: serverTimestamp()
-        }).then(() => {
-            cleanupRoom(currentRoomCode);
-        }).catch((error) => {
-            console.log("Host leave cleanup failed:", error);
-        });
-    } else {
-        update(ref(db, "rooms/" + currentRoomCode + "/members"), {
-            [currentUserId]: null
-        }).then(() => {
-            pruneInactiveRoom(currentRoomCode);
-        }).catch((error) => {
-            console.log(error);
-        });
-    }
+    clearSession();
+    cancelDisconnect();
 
     if (player) player.stopVideo();
 
@@ -652,7 +692,27 @@ leaveRoomButton.addEventListener("click", () => {
     hideSyncToast();
     chatMessages.innerHTML = "";
     resetChatScrollState();
+
+    if (wasHost) {
+        update(ref(db, "rooms/" + roomCodeToLeave), {
+            hostId: null,
+            lastActivity: serverTimestamp()
+        }).then(() => {
+            cleanupRoom(roomCodeToLeave);
+        }).catch((error) => {
+            console.log("Host leave cleanup failed:", error);
+        });
+    } else {
+        update(ref(db, "rooms/" + roomCodeToLeave + "/members"), {
+            [currentUserId]: null
+        }).then(() => {
+            pruneInactiveRoom(roomCodeToLeave);
+        }).catch((error) => {
+            console.log(error);
+        });
+    }
 });
+// ----------------------------------------------------------------------
 
 let player;
 let playerReady = false;
@@ -905,6 +965,10 @@ setVideoButton.addEventListener("click", () => {
         return;
     }
 
+    // A deliberate new video pick always overrides any pending
+    // resume-from-refresh state.
+    rejoinPlaybackState = null;
+
     hidePlayerEmptyState();
 
     set(ref(db, "rooms/" + currentRoomCode + "/videoId"), videoId).then(() => {
@@ -950,13 +1014,41 @@ function listenForVideo() {
             return;
         }
 
+        // If we just rejoined after a refresh, resume at the stashed
+        // playback position instead of restarting the video at 0:00.
+        // Consumed once so future video changes still load fresh.
+        const doLoad = (p) => {
+            hidePlayerEmptyState();
+
+            if (rejoinPlaybackState && rejoinPlaybackState.videoId === videoId) {
+                const { time, state } = rejoinPlaybackState;
+                rejoinPlaybackState = null;
+                try {
+                    p.loadVideoById({ videoId, startSeconds: time });
+                    if (state === "paused") {
+                        setTimeout(() => {
+                            try { p.pauseVideo(); } catch (e) {}
+                        }, 300);
+                    }
+                } catch (error) {
+                    console.log("Video load error:", error);
+                }
+                return;
+            }
+
+            try {
+                p.loadVideoById(videoId);
+            } catch (error) {
+                console.log("Video load error:", error);
+            }
+        };
+
         if (!player) {
             let retries = 0;
             const waitForPlayer = setInterval(() => {
                 if (player && typeof player.loadVideoById === "function") {
                     clearInterval(waitForPlayer);
-                    hidePlayerEmptyState();
-                    player.loadVideoById(videoId);
+                    doLoad(player);
                 }
                 retries++;
                 if (retries > 20) clearInterval(waitForPlayer);
@@ -964,12 +1056,7 @@ function listenForVideo() {
             return;
         }
 
-        hidePlayerEmptyState();
-        try {
-            player.loadVideoById(videoId);
-        } catch (error) {
-            console.log("Video load error:", error);
-        }
+        doLoad(player);
     });
 }
 
@@ -1077,9 +1164,7 @@ function listenForMessages() {
             const text = document.createElement("span");
             text.textContent = message.text;
             const time = document.createElement("small");
- 
-time.textContent = new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
- 
+            time.textContent = new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
             messageItem.appendChild(username);
             messageItem.appendChild(text);
             messageItem.appendChild(time);
