@@ -50,11 +50,5 @@ Mini Cinema is a watch-party web app. It lets people watch a YouTube video toget
 - **Firebase Anonymous Authentication** – signs users in without needing an account
 - **YouTube IFrame Player API** – plays and controls the video
 - **GitHub Pages** – hosts the live site
-
-## How to Run Locally
-
-1. Clone the repository
-2. Add your own Firebase project config in `js/firebase-config.js`
-3. Open `index.html` in a browser (or serve the folder with a simple local server)
-
+ 
  
