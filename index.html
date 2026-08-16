@@ -15,7 +15,7 @@
      <button id="join-room-btn">Join Room</button>
       
      </div>
-     
+
      <div id="room-page">
     <div class="room-header">
         <div>
@@ -41,6 +41,15 @@
                     </div>
                 </div>
                 <div id="reaction-overlay" aria-live="polite"></div>
+
+                <div id="sync-toast" class="sync-toast" role="alert" aria-live="assertive">
+                    <span class="sync-toast-icon">⚠️</span>
+                    <span class="sync-toast-text">You're out of sync with the host</span>
+                    <button id="sync-toast-sync-btn" class="sync-toast-sync" type="button">Sync now</button>
+                    <button id="sync-toast-dismiss" class="sync-toast-close" type="button" aria-label="Dismiss">×</button>
+                </div>
+
+                <button id="fullscreen-toggle-btn" class="fullscreen-toggle" type="button" aria-label="Toggle fullscreen" aria-pressed="false">⛶</button>
             </div>
 
             <div id="reaction-bar" class="reaction-bar" aria-label="React to the movie">
@@ -56,13 +65,22 @@
                 <input id="youtube-url-input" type="text" placeholder="Paste YouTube URL">
                 <button id="set-video-btn">Set Video</button>
                 <button id="resync-btn" style="display: none;">Resync</button>
-                <button id="guest-controls-btn" class="ghost-btn" type="button">Host controls my screen</button>
+                <button id="guest-controls-btn" class="mode-switch" type="button" aria-pressed="true">
+                    <span class="mode-switch-thumb"></span>
+                    <span class="mode-switch-label mode-switch-label-host">Host controls</span>
+                    <span class="mode-switch-label mode-switch-label-self">I control</span>
+                </button>
             </div>
         </section>
 
         <aside id="chat-sidebar">
             <h2>Chat</h2>
-            <div id="chat-messages"></div>
+            <div id="chat-messages-wrap">
+                <div id="chat-messages"></div>
+                <button id="new-message-badge" class="new-message-badge" type="button">
+                    <span aria-hidden="true">↓</span> New messages
+                </button>
+            </div>
 
             <div id="chat-input-area">
                 <input

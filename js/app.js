@@ -1,12 +1,30 @@
 import { auth, db } from "./firebase-config.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { ref, set,get,update,onValue ,push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { ref, set,get,update,onValue ,push, remove, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
  const testRef = ref(db, "test");
 let currentUserId;
 let currentUsername;
 let currentRoomCode;
 let isHost = false;
+
+// --- Server time correction -------------------------------------------
+// Date.now() only reflects THIS device's clock, which can be seconds off
+// from another device's clock. Firebase exposes ".info/serverTimeOffset",
+// the difference (in ms) between the server's clock and this client's
+// clock. Adding it to Date.now() gives a "corrected" timestamp that is
+// consistent across every device in the room, regardless of local clock
+// drift. Use serverNow() anywhere you need to compare "now" against a
+// timestamp that was written by a different device (host vs guest).
+let serverTimeOffset = 0;
+onValue(ref(db, ".info/serverTimeOffset"), (snapshot) => {
+    serverTimeOffset = snapshot.val() || 0;
+});
+
+function serverNow() {
+    return Date.now() + serverTimeOffset;
+}
+// ------------------------------------------------------------------------
 
 const adjectives = [
     "Ambitious",
@@ -73,15 +91,113 @@ const youtubeUrlInput = document.getElementById("youtube-url-input");
 const setVideoButton = document.getElementById("set-video-btn");
 const resyncButton = document.getElementById("resync-btn");
 const chatMessages = document.getElementById("chat-messages");
+const newMessageBadge = document.getElementById("new-message-badge");
 const chatInput = document.getElementById("chat-input");
 const sendChatButton = document.getElementById("send-chat-btn");
 const playerEmptyState = document.getElementById("player-empty-state");
 const guestControlsButton = document.getElementById("guest-controls-btn");
 const reactionOverlay = document.getElementById("reaction-overlay");
+const syncToast = document.getElementById("sync-toast");
+const syncToastDismissBtn = document.getElementById("sync-toast-dismiss");
+const syncToastSyncBtn = document.getElementById("sync-toast-sync-btn");
+const fullscreenToggleBtn = document.getElementById("fullscreen-toggle-btn");
+const moviePanel = document.querySelector(".movie-panel");
 
 let guestFollowsHost = false;
 let suppressGuestSync = false;
+let syncToastDismissed = false;
 const seenReactionIds = new Set();
+
+// --- Chat auto-scroll -----------------------------------------------------
+// Mirrors how real-time chat apps behave: stay pinned to the bottom while
+// you're already there (including right after you send a message), but if
+// you've scrolled up to read older messages, don't yank you back down —
+// just show a "New messages" pill so you can jump down when you're ready.
+let lastRenderedMessageCount = 0;
+let hasRenderedMessagesOnce = false;
+
+function isChatNearBottom() {
+    const threshold = 40; // px of slack before we consider it "at the bottom"
+    return chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < threshold;
+}
+
+function scrollChatToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showNewMessageBadge() {
+    if (newMessageBadge) {
+        newMessageBadge.classList.add("visible");
+    }
+}
+
+function hideNewMessageBadge() {
+    if (newMessageBadge) {
+        newMessageBadge.classList.remove("visible");
+    }
+}
+
+function resetChatScrollState() {
+    lastRenderedMessageCount = 0;
+    hasRenderedMessagesOnce = false;
+    hideNewMessageBadge();
+}
+
+if (chatMessages) {
+    chatMessages.addEventListener("scroll", () => {
+        if (isChatNearBottom()) {
+            hideNewMessageBadge();
+        }
+    });
+}
+
+if (newMessageBadge) {
+    newMessageBadge.addEventListener("click", () => {
+        scrollChatToBottom();
+        hideNewMessageBadge();
+    });
+}
+// ---------------------------------------------------------------------------
+
+// Shows/hides the "out of sync" warning toast. Dismissing it only hides it
+// for the current out-of-sync episode — once the guest drifts back within
+// range and then falls out of sync again later, it's free to reappear.
+function showSyncToast() {
+    if (!syncToast || syncToastDismissed) {
+        return;
+    }
+    syncToast.classList.add("visible");
+}
+
+function hideSyncToast() {
+    if (!syncToast) {
+        return;
+    }
+    syncToast.classList.remove("visible");
+    syncToastDismissed = false;
+}
+
+if (syncToastDismissBtn) {
+    syncToastDismissBtn.addEventListener("click", () => {
+        syncToastDismissed = true;
+        if (syncToast) {
+            syncToast.classList.remove("visible");
+        }
+    });
+}
+
+if (syncToastSyncBtn) {
+    syncToastSyncBtn.addEventListener("click", () => {
+        // Same one-off catch-up as the Resync button, just reachable
+        // directly from the toast — handy when controls are tucked away
+        // (e.g. in fullscreen).
+        syncGuestToHost({ applyFollowMode: false });
+        hideSyncToast();
+        if (resyncButton) {
+            resyncButton.style.display = "none";
+        }
+    });
+}
 
 roomPage.style.display = "none";
 
@@ -214,11 +330,8 @@ function updateGuestControlsButton() {
     }
 
     guestControlsButton.style.display = "inline-flex";
-    guestControlsButton.textContent = guestFollowsHost
-        ? "Host controls my screen"
-        : "I control my screen";
-
     guestControlsButton.classList.toggle("is-off", !guestFollowsHost);
+    guestControlsButton.setAttribute("aria-pressed", String(guestFollowsHost));
     resyncButton.style.display = "inline-flex";
 }
 
@@ -255,7 +368,7 @@ function touchRoomActivity(roomCodeValue = currentRoomCode) {
 
     const roomRef = ref(db, "rooms/" + roomCodeValue);
     update(roomRef, {
-        lastActivity: Date.now()
+        lastActivity: serverTimestamp()
     }).catch((error) => {
         console.log("Room activity update failed:", error);
     });
@@ -298,7 +411,7 @@ setInterval(() => {
 
     get(rootRoomsRef).then((snapshot) => {
         const rooms = snapshot.val() || {};
-        const now = Date.now();
+        const now = serverNow();
 
         for (const roomCodeValue in rooms) {
             const room = rooms[roomCodeValue] || {};
@@ -336,12 +449,12 @@ updateGuestControlsButton();
  set(roomRef, {
    roomCode: roomCode ,
     hostId: currentUserId,
-    createdAt:Date.now(),
-    lastActivity: Date.now(),
+    createdAt: serverTimestamp(),
+    lastActivity: serverTimestamp(),
     playback: {
         state: "paused",
         time: 0,
-        updatedAt: Date.now()
+        updatedAt: serverTimestamp()
     },
     members:{
          [currentUserId]: currentUsername
@@ -356,6 +469,7 @@ updateGuestControlsButton();
     const membersFolder = ref(db, roomPath + "/members");
 
     onValue(membersFolder, displayMembers);
+    resetChatScrollState();
     listenForMessages();
     listenForReactions();
     listenForVideo();
@@ -386,9 +500,17 @@ function displayMembers(snapshot) {
         memberList.appendChild(memberItem);
     }
 }
-joinRoomButton.addEventListener("click",()=>{console.log("You have joined the room :",joinRoomInput.value);
-    const roomPath = "rooms/" +joinRoomInput.value;
-    currentRoomCode = joinRoomInput.value;
+joinRoomButton.addEventListener("click",()=>{
+    const enteredCode = joinRoomInput.value.trim().toUpperCase();
+    console.log("Attempting to join room:", enteredCode);
+
+    if (!enteredCode) {
+        console.log("❌ No room code entered.");
+        return;
+    }
+
+    const roomPath = "rooms/" + enteredCode;
+    currentRoomCode = enteredCode;
     isHost = false;
     // New guests automatically follow the host on every device.
     guestFollowsHost = true;
@@ -413,7 +535,7 @@ update(membersFolder, {
     onValue(membersFolder, displayMembers);
     onDisconnect(ref(db, roomPath + "/members/" + currentUserId)).remove();
 
-    roomCodeDisplay.textContent = joinRoomInput.value;
+    roomCodeDisplay.textContent = enteredCode;
     landingPage.style.display = "none";
 roomPage.style.display = "block";
 showPlayerEmptyState({
@@ -421,12 +543,20 @@ showPlayerEmptyState({
     text: "Syncing to the host’s current movie and playback position..."
 });
 
-update(roomRef, { lastActivity: Date.now() });
+update(roomRef, { lastActivity: serverTimestamp() });
 listenForPlayback();
 listenForVideo();
 handleGuestReconnectSync();
+resetChatScrollState();
 listenForMessages();
 listenForReactions();
+  } else {
+    console.log("❌ Room not found:", enteredCode);
+    currentRoomCode = null;
+    showPlayerEmptyState({
+        title: "Room not found",
+        text: "Double-check the room code and try again."
+    });
   }
 })
 .catch((error) => {
@@ -456,7 +586,7 @@ function generateRoomCode() {
         const roomRef = ref(db, "rooms/" + currentRoomCode);
         update(roomRef, {
             hostId: null,
-            lastActivity: Date.now()
+            lastActivity: serverTimestamp()
         }).then(() => {
             cleanupRoom(currentRoomCode);
         }).catch((error) => {
@@ -487,6 +617,9 @@ function generateRoomCode() {
     isHost = false;
     guestFollowsHost = false;
     updateGuestControlsButton();
+    hideSyncToast();
+    chatMessages.innerHTML = "";
+    resetChatScrollState();
 });
  
  let player;
@@ -501,7 +634,8 @@ window.onYouTubeIframeAPIReady = function () {
         playerVars: {
             autoplay: 0,
             controls: 1,
-            rel: 0
+            rel: 0,
+            fs: 0
         },
         events: {
             onReady: onPlayerReady,
@@ -515,6 +649,59 @@ window.initializePlayer = function() {
         window.onYouTubeIframeAPIReady();
     }
 };
+
+// --- Custom fullscreen ---------------------------------------------------
+// YouTube's own fullscreen button (now disabled via fs:0 above) fullscreens
+// only the iframe itself, which would hide the sync toast, reaction bar,
+// and Resync/mode controls entirely. Fullscreening .movie-panel instead
+// keeps all of that overlay UI on screen.
+function isFullscreenActive() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function enterFullscreen() {
+    if (!moviePanel) {
+        return;
+    }
+    if (moviePanel.requestFullscreen) {
+        moviePanel.requestFullscreen().catch((error) => {
+            console.log("Fullscreen request failed:", error);
+        });
+    } else if (moviePanel.webkitRequestFullscreen) {
+        moviePanel.webkitRequestFullscreen();
+    }
+}
+
+function exitFullscreen() {
+    if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+    } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+    }
+}
+
+if (fullscreenToggleBtn) {
+    fullscreenToggleBtn.addEventListener("click", () => {
+        if (isFullscreenActive()) {
+            exitFullscreen();
+        } else {
+            enterFullscreen();
+        }
+    });
+}
+
+function updateFullscreenToggleState() {
+    if (!fullscreenToggleBtn) {
+        return;
+    }
+    const active = isFullscreenActive();
+    fullscreenToggleBtn.textContent = active ? "⤢" : "⛶";
+    fullscreenToggleBtn.setAttribute("aria-pressed", String(active));
+}
+
+document.addEventListener("fullscreenchange", updateFullscreenToggleState);
+document.addEventListener("webkitfullscreenchange", updateFullscreenToggleState);
+// ---------------------------------------------------------------------------
 
 // Try to initialize if YouTube API is already loaded
 if (typeof YT !== "undefined" && YT.Player) {
@@ -539,7 +726,7 @@ function onPlayerStateChange(event) {
         set(playbackRef, {
             state: "playing",
             time: currentTime,
-            updatedAt: Date.now()
+            updatedAt: serverTimestamp()
         });
 
     }
@@ -549,7 +736,7 @@ function onPlayerStateChange(event) {
         set(playbackRef, {
             state: "paused",
             time: currentTime,
-            updatedAt: Date.now()
+            updatedAt: serverTimestamp()
         });
 
     }
@@ -587,8 +774,8 @@ function syncGuestToHost({ applyFollowMode = false } = {}) {
             }
 
         const hostTime = playback.time || 0;
-        const updatedAt = playback.updatedAt || Date.now();
-        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+        const updatedAt = playback.updatedAt || serverNow();
+        const elapsedSinceUpdate = (serverNow() - updatedAt) / 1000;
         let estimatedHostTime = hostTime;
 
         if (playback.state === "playing") {
@@ -671,8 +858,8 @@ function listenForPlayback() {
             hidePlayerEmptyState();
 
         const hostTime = playback.time || 0;
-        const updatedAt = playback.updatedAt || Date.now();
-        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+        const updatedAt = playback.updatedAt || serverNow();
+        const elapsedSinceUpdate = (serverNow() - updatedAt) / 1000;
 
         let estimatedHostTime = hostTime;
 
@@ -751,7 +938,7 @@ function checkForSeek() {
         set(playbackRef, {
             state: state,
             time: currentTime,
-            updatedAt: Date.now()
+            updatedAt: serverTimestamp()
         });
     }
 
@@ -916,19 +1103,26 @@ function listenForVideo() {
 }
 function checkGuestSync() {
 
-    if (isHost || !player) {
+    if (isHost || !player || !currentRoomCode) {
         return;
     }
+
+    // While following the host, playback is kept in sync continuously by
+    // listenForPlayback(), so there's nothing to warn about and no manual
+    // resync is ever needed here. The toast/Resync button are only for
+    // "I control" mode, where the guest has detached from the host.
+    if (guestFollowsHost) {
+        hideSyncToast();
+        resyncButton.style.display = "none";
+        return;
+    }
+
+    resyncButton.style.display = "inline-flex";
 
     const playbackRef = ref(
         db,
         "rooms/" + currentRoomCode + "/playback"
     );
-
-    if (!guestFollowsHost) {
-        resyncButton.style.display = "block";
-        return;
-    }
 
     get(playbackRef).then((snapshot) => {
 
@@ -938,35 +1132,29 @@ function checkGuestSync() {
             return;
         }
 
-      const hostTime = playback.time || 0;
-const updatedAt = playback.updatedAt || Date.now();
+        const hostTime = playback.time || 0;
+        const updatedAt = playback.updatedAt || serverNow();
+        const elapsedSinceUpdate = (serverNow() - updatedAt) / 1000;
 
-const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+        let estimatedHostTime = hostTime;
 
-let estimatedHostTime = hostTime;
+        if (playback.state === "playing") {
+            estimatedHostTime = hostTime + elapsedSinceUpdate;
+        }
 
-if (playback.state === "playing") {
-    estimatedHostTime = hostTime + elapsedSinceUpdate;
-}
+        const guestTime = player.getCurrentTime();
+        const difference = Math.abs(estimatedHostTime - guestTime);
 
-const guestTime = player.getCurrentTime();
+        console.log("Firebase host time:", hostTime);
+        console.log("Estimated host time:", estimatedHostTime);
+        console.log("Guest time:", guestTime);
+        console.log("Difference:", difference);
 
-const difference = Math.abs(estimatedHostTime - guestTime);
-
-console.log("Firebase host time:", hostTime);
-console.log("Estimated host time:", estimatedHostTime);
-console.log("Guest time:", guestTime);
-console.log("Difference:", difference);
-
-      if (guestFollowsHost) {
-            if (difference > 3) {
-                console.log("⚠️ You are out of sync!");
-                resyncButton.style.display = "block";
-            } else {
-                resyncButton.style.display = "none";
-            }
+        if (difference > 2) {
+            console.log("⚠️ You are out of sync!");
+            showSyncToast();
         } else {
-            resyncButton.style.display = "inline-flex";
+            hideSyncToast();
         }
     });
 }
@@ -981,7 +1169,11 @@ guestControlsButton.addEventListener("click", () => {
     updateGuestControlsButton();
 
     if (guestFollowsHost) {
+        hideSyncToast();
+        resyncButton.style.display = "none";
         syncGuestToHost({ applyFollowMode: true });
+    } else {
+        resyncButton.style.display = "inline-flex";
     }
 });
 
@@ -994,6 +1186,7 @@ resyncButton.addEventListener("click", () => {
 
     syncGuestToHost({ applyFollowMode: false });
     resyncButton.style.display = "none";
+    hideSyncToast();
     console.log("✅ Resync pressed. Guest remains in manual mode unless they choose host control.");
 });
 function updateHostTime() {
@@ -1018,7 +1211,7 @@ function updateHostTime() {
     set(playbackRef, {
         state: "playing",
         time: currentTime,
-        updatedAt: Date.now()
+        updatedAt: serverTimestamp()
     });
 }
 
@@ -1059,6 +1252,17 @@ function listenForMessages() {
     onValue(messagesRef, (snapshot) => {
 
         const messages = snapshot.val() || {};
+        const messageIds = Object.keys(messages);
+
+        // Capture scroll position and identify the newest message BEFORE we
+        // touch the DOM — re-rendering changes scrollHeight, so this has to
+        // happen first.
+        const wasAtBottom = isChatNearBottom();
+        const isFirstRender = !hasRenderedMessagesOnce;
+        const isNewMessage = messageIds.length > lastRenderedMessageCount;
+        const latestMessage = messageIds.length > 0
+            ? messages[messageIds[messageIds.length - 1]]
+            : null;
 
         chatMessages.innerHTML = "";
 
@@ -1088,6 +1292,22 @@ function listenForMessages() {
             messageItem.appendChild(time);
 
             chatMessages.appendChild(messageItem);
+        }
+
+        hasRenderedMessagesOnce = true;
+        lastRenderedMessageCount = messageIds.length;
+
+        const sentByMe = !!(latestMessage && latestMessage.userId === currentUserId);
+
+        if (isFirstRender || sentByMe || wasAtBottom) {
+            // Loading the room, sending your own message, or already reading
+            // the latest message — always follow to the bottom.
+            scrollChatToBottom();
+            hideNewMessageBadge();
+        } else if (isNewMessage) {
+            // Someone else's message arrived while you were scrolled up —
+            // don't yank the view, just flag that there's something new.
+            showNewMessageBadge();
         }
     });
 }
