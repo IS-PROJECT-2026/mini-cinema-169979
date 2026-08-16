@@ -261,17 +261,6 @@ h1 {
 }
 
 /* --- Fullscreen ---------------------------------------------------- */
-/* A cross-origin YouTube iframe's own native fullscreen button makes
-   ONLY the iframe fullscreen — nothing outside it (our sync toast,
-   the reaction bar, resync controls) can render on top of that. So we
-   disable YouTube's built-in fullscreen (fs=0, set in script.js) and
-   fullscreen the whole .movie-panel ourselves instead, which keeps all
-   of our overlay UI part of the fullscreened content.
-
-   In fullscreen only two things show: the video (90% of the height)
-   and the reaction bar (10%). The member list, URL/Set Video row, and
-   mode-switch are hidden — Resync is still reachable via the toast's
-   own "Sync now" button, which lives inside the video stage. */
 .movie-panel:fullscreen,
 .movie-panel:-webkit-full-screen {
     display: grid;
@@ -411,17 +400,30 @@ h1 {
     line-height: 1.5;
 }
 
+/* --- Video controls ---
+   Host sees: [url input] [Set Video] [resync/mode-switch]  → 3 columns
+   Guest sees: only [resync] [mode-switch]                  → auto / single row
+   When the url input and Set Video button are hidden via JS (display:none),
+   the grid collapses gracefully because the hidden items don't occupy space. */
 .video-controls {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 18px;
     align-items: center;
 }
 
 #youtube-url-input {
-    width: 100%;
+    flex: 1 1 200px;
     min-width: 0;
+    width: auto;
+}
+
+#set-video-btn,
+#resync-btn,
+#guest-controls-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .reaction-bar {
@@ -453,13 +455,6 @@ h1 {
 .reaction-btn:hover {
     transform: translateY(-2px) scale(1.04);
     border-color: rgba(139, 92, 246, 0.8);
-}
-
-#set-video-btn,
-#resync-btn,
-#guest-controls-btn {
-    white-space: nowrap;
-    flex-shrink: 0;
 }
 
 #reaction-overlay {
@@ -500,10 +495,6 @@ h1 {
 }
 
 /* --- Out-of-sync warning toast -------------------------------------- */
-/* Fixed to the top of the viewport so it's visible regardless of scroll
-   position. Bright amber/red on a dark UI is deliberately high-contrast
-   so it can't blend into the background, and the pulsing ring keeps it
-   noticeable at a glance without requiring the user to read text. */
 .sync-toast {
     position: fixed;
     top: 18px;
@@ -607,7 +598,6 @@ h1 {
         padding: 7px 11px;
     }
 }
-/* ---------------------------------------------------------------------- */
 
 #chat-sidebar {
     padding: 18px 14px 14px;
@@ -874,7 +864,13 @@ footer a:hover {
     }
 
     .video-controls {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+
+    #youtube-url-input,
+    #set-video-btn,
+    #resync-btn {
+        width: 100%;
     }
 
     #chat-input-area {
@@ -966,7 +962,6 @@ footer a:hover {
 
     .video-controls,
     #chat-input-area {
-        grid-template-columns: 1fr;
         flex-direction: column;
     }
 
