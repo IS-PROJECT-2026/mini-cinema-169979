@@ -488,7 +488,7 @@ showPlayerEmptyState({
 });
 
 update(roomRef, { lastActivity: Date.now() });
-listenForPlayback();
+ 
 listenForVideo();
 handleGuestReconnectSync();
 listenForMessages();
@@ -562,19 +562,18 @@ let checkingTime = false;
 
 window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player("player", {
-        height: "100%",
-        width: "100%",
-        playerVars: {
-            autoplay: 0,
-            controls: 1,
-            rel: 0
-        },
+        height: "390",
+        width: "640",
+        videoId: "8A7i67ZRjG8",
+
         events: {
             onReady: onPlayerReady,
             onStateChange: onPlayerStateChange
         }
     });
 };
+
+ 
 
 window.initializePlayer = function() {
     if (typeof YT !== "undefined" && YT.Player) {
@@ -1131,9 +1130,8 @@ function onPlayerReady() {
 
     listenForVideo();
 
-    // The first database update may arrive before YouTube is ready. Syncing
-    // here guarantees a new guest starts at the host's current position.
     if (!isHost) {
+        listenForPlayback();          // 👈 ADD THIS LINE
         syncGuestToHost({ applyFollowMode: true });
     }
 }
