@@ -134,6 +134,32 @@ window.addEventListener("beforeunload", () => {
 let rejoinPlaybackState = null; // { videoId, time, state } | null
 // ----------------------------------------------------------------------
 
+// --- Room-scoped listener cleanup ---------------------------------------
+// Every onValue() call below is bound, at the moment it's created, to
+// whatever room code was current at the time — it does NOT track future
+// changes to currentRoomCode. If we never unsubscribe, leaving room A and
+// joining room B leaves A's listeners alive; if room A's data changes
+// later (e.g. its async cleanup/remove finishing after you've already
+// joined B), those stale callbacks still fire and mutate the *same*
+// shared `player` / DOM, bleeding room A's video, chat, etc. into room B.
+//
+// Fix: every onValue() we care about is wrapped in trackListener(), and
+// detachRoomListeners() is called before we attach a new room's listeners
+// (create/join/rejoin) and when we leave a room.
+let unsubscribeFns = [];
+
+function trackListener(unsubscribeFn) {
+    if (typeof unsubscribeFn === "function") unsubscribeFns.push(unsubscribeFn);
+}
+
+function detachRoomListeners() {
+    unsubscribeFns.forEach((fn) => {
+        try { fn(); } catch (error) { console.log("Listener detach failed:", error); }
+    });
+    unsubscribeFns = [];
+}
+// ----------------------------------------------------------------------
+
 signInAnonymously(auth)
     .then((userCredential) => {
         console.log("Anonymous login successful");
@@ -178,6 +204,10 @@ function attemptRejoin(savedRoomCode, savedIsHost, leftAt) {
             return;
         }
 
+        // Defensive: make sure nothing from a previous room is still
+        // listening before we attach this room's listeners.
+        detachRoomListeners();
+
         const roomData = snapshot.val();
 
         currentRoomCode = savedRoomCode;
@@ -215,7 +245,7 @@ function attemptRejoin(savedRoomCode, savedIsHost, leftAt) {
         touchRoomActivity(savedRoomCode);
         updateGuestControlsButton();
         updateVideoControlsVisibility();
-        onValue(membersFolder, displayMembers);
+        trackListener(onValue(membersFolder, displayMembers));
 
         resetChatScrollState();
         listenForMessages();
@@ -352,7 +382,20 @@ if (syncToastSyncBtn) {
 
 roomPage.style.display = "none";
 
+// The overlay div is enough on its own IF it's fully opaque, but we
+// don't want to depend on that. Explicitly hide the actual YouTube
+// iframe whenever there's no video for the current room, so a stale
+// paused frame from a previous room can never show through — opaque
+// overlay or not.
+function setPlayerIframeVisible(visible) {
+    if (!player || typeof player.getIframe !== "function") return;
+    const iframe = player.getIframe();
+    if (!iframe) return;
+    iframe.style.visibility = visible ? "visible" : "hidden";
+}
+
 function showPlayerEmptyState(message) {
+    setPlayerIframeVisible(false);
     if (!playerEmptyState) return;
     const title = playerEmptyState.querySelector("h3");
     const text = playerEmptyState.querySelector("p");
@@ -362,6 +405,7 @@ function showPlayerEmptyState(message) {
 }
 
 function hidePlayerEmptyState() {
+    setPlayerIframeVisible(true);
     if (playerEmptyState) playerEmptyState.style.display = "none";
 }
 
@@ -418,7 +462,7 @@ document.addEventListener("click", (event) => {
 function listenForReactions() {
     if (!currentRoomCode) return;
     const reactionsRef = ref(db, "rooms/" + currentRoomCode + "/reactions");
-    onValue(reactionsRef, (snapshot) => {
+    const unsubscribe = onValue(reactionsRef, (snapshot) => {
         const reactions = snapshot.val() || {};
         for (const reactionId in reactions) {
             if (!reactions[reactionId] || !reactions[reactionId].emoji) continue;
@@ -427,6 +471,7 @@ function listenForReactions() {
             showReactionBurst(reactions[reactionId].emoji);
         }
     });
+    trackListener(unsubscribe);
 }
 
 function updateGuestControlsButton() {
@@ -531,6 +576,10 @@ createRoomButton.addEventListener("click", () => {
         return;
     }
 
+    // Make sure nothing from a previous room is still listening.
+    detachRoomListeners();
+    rejoinPlaybackState = null;
+
     const roomCode = generateRoomCode();
     currentRoomCode = roomCode;
     isHost = true;
@@ -562,7 +611,7 @@ createRoomButton.addEventListener("click", () => {
         registerDisconnect(roomCode, currentUserId);
 
         const membersFolder = ref(db, roomPath + "/members");
-        onValue(membersFolder, displayMembers);
+        trackListener(onValue(membersFolder, displayMembers));
         resetChatScrollState();
         listenForMessages();
         listenForReactions();
@@ -601,6 +650,10 @@ joinRoomButton.addEventListener("click", () => {
         return;
     }
 
+    // Make sure nothing from a previous room is still listening.
+    detachRoomListeners();
+    rejoinPlaybackState = null;
+
     const roomPath = "rooms/" + enteredCode;
     currentRoomCode = enteredCode;
     isHost = false;
@@ -627,7 +680,7 @@ joinRoomButton.addEventListener("click", () => {
                 // does not leave the room just by refreshing the page.
                 registerDisconnect(enteredCode, currentUserId);
 
-                onValue(membersFolder, displayMembers);
+                trackListener(onValue(membersFolder, displayMembers));
             });
 
             roomCodeDisplay.textContent = enteredCode;
@@ -680,6 +733,12 @@ leaveRoomButton.addEventListener("click", () => {
     clearSession();
     cancelDisconnect();
 
+    // Stop every listener bound to this room BEFORE anything else — this
+    // is what stops the old room's video/chat/playback from bleeding
+    // into whichever room gets joined next.
+    detachRoomListeners();
+    rejoinPlaybackState = null;
+
     if (player) player.stopVideo();
 
     landingPage.style.display = "block";
@@ -692,6 +751,11 @@ leaveRoomButton.addEventListener("click", () => {
     hideSyncToast();
     chatMessages.innerHTML = "";
     resetChatScrollState();
+    if (youtubeUrlInput) youtubeUrlInput.value = "";
+    showPlayerEmptyState({
+        title: "Waiting for the host to pick a movie",
+        text: "Paste a YouTube URL and click \u201cSet Video\u201d to begin the room."
+    });
 
     if (wasHost) {
         update(ref(db, "rooms/" + roomCodeToLeave), {
@@ -858,7 +922,7 @@ function syncGuestToHost({ applyFollowMode = false } = {}) {
 function listenForPlayback() {
     if (isHost) return;
 
-    onValue(ref(db, "rooms/" + currentRoomCode + "/playback"), (snapshot) => {
+    const unsubscribe = onValue(ref(db, "rooms/" + currentRoomCode + "/playback"), (snapshot) => {
         const playback = snapshot.val();
         if (!guestFollowsHost) return;
         if (!playback || !player) return;
@@ -898,6 +962,7 @@ function listenForPlayback() {
             });
         });
     });
+    trackListener(unsubscribe);
 }
 
 function checkForSeek() {
@@ -1000,7 +1065,7 @@ youtubeUrlInput.addEventListener("keydown", (event) => {
 });
 
 function listenForVideo() {
-    onValue(ref(db, "rooms/" + currentRoomCode + "/videoId"), (snapshot) => {
+    const unsubscribe = onValue(ref(db, "rooms/" + currentRoomCode + "/videoId"), (snapshot) => {
         const videoId = snapshot.val();
 
         if (!videoId) {
@@ -1058,6 +1123,7 @@ function listenForVideo() {
 
         doLoad(player);
     });
+    trackListener(unsubscribe);
 }
 
 function checkGuestSync() {
@@ -1145,7 +1211,7 @@ chatInput.addEventListener("keydown", (event) => {
 });
 
 function listenForMessages() {
-    onValue(ref(db, "rooms/" + currentRoomCode + "/messages"), (snapshot) => {
+    const unsubscribe = onValue(ref(db, "rooms/" + currentRoomCode + "/messages"), (snapshot) => {
         const messages = snapshot.val() || {};
         const messageIds = Object.keys(messages);
 
@@ -1183,6 +1249,7 @@ function listenForMessages() {
             showNewMessageBadge();
         }
     });
+    trackListener(unsubscribe);
 }
 
 function onPlayerReady() {

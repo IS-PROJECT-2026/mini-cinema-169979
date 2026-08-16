@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini Cinema</title>
     <link rel="stylesheet" href="./css/style.css">
+    <style>
+        /*
+          Safety net: #player-empty-state must overlay the video iframe.
+          It used to live INSIDE #player, but YT.Player replaces that
+          entire element with an <iframe>, wiping the overlay out. It's
+          now a sibling of #player instead (see body below) — these
+          rules just guarantee the overlay positions correctly on top
+          of the iframe even if css/style.css doesn't already handle it.
+        */
+        .video-stage {
+            position: relative;
+        }
+        #player-empty-state.player-empty-state {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            background: #060911 !important;
+        }
+    </style>
 </head>
 <body>
     <div id="landing-page"> 
@@ -33,13 +52,22 @@
             </div>
 
             <div class="video-stage">
-                <div id="player" aria-live="polite">
-                    <div id="player-empty-state" class="player-empty-state">
-                        <div class="player-empty-icon">▶</div>
-                        <h3>Waiting for the host to pick a movie</h3>
-                        <p>Paste a YouTube URL and click “Set Video” to begin the room.</p>
-                    </div>
+                <!--
+                  #player is handed to the YouTube IFrame API, which
+                  REPLACES this div entirely with an <iframe id="player">.
+                  Nothing meant to stay visible/attached can live inside
+                  it — that's why player-empty-state, reaction-overlay,
+                  sync-toast, and the fullscreen button are all siblings
+                  of #player instead of children.
+                -->
+                <div id="player" aria-live="polite"></div>
+
+                <div id="player-empty-state" class="player-empty-state">
+                    <div class="player-empty-icon">▶</div>
+                    <h3>Waiting for the host to pick a movie</h3>
+                    <p>Paste a YouTube URL and click “Set Video” to begin the room.</p>
                 </div>
+
                 <div id="reaction-overlay" aria-live="polite"></div>
 
                 <div id="sync-toast" class="sync-toast" role="alert" aria-live="assertive">
