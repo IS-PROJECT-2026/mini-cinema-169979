@@ -495,8 +495,8 @@ let checkingTime = false;
 
 window.onYouTubeIframeAPIReady = function () {
     player = new YT.Player("player", {
-        height: "390",
-        width: "640",
+        height: "100%",
+        width: "100%",
         playerVars: {
             autoplay: 0,
             controls: 1,
@@ -508,6 +508,18 @@ window.onYouTubeIframeAPIReady = function () {
         }
     });
 };
+
+window.initializePlayer = function() {
+    if (typeof YT !== "undefined" && YT.Player) {
+        window.onYouTubeIframeAPIReady();
+    }
+};
+
+// Try to initialize if YouTube API is already loaded
+if (typeof YT !== "undefined" && YT.Player) {
+    window.initializePlayer();
+}
+
 function onPlayerStateChange(event) {
 
     if (!isHost) {
@@ -812,6 +824,20 @@ setVideoButton.addEventListener("click", () => {
                 } catch (error) {
                     console.log("Player load error:", error);
                 }
+            } else {
+                let retries = 0;
+                const waitForPlayer = setInterval(() => {
+                    if (player && typeof player.loadVideoById === "function") {
+                        clearInterval(waitForPlayer);
+                        player.loadVideoById(videoId);
+                        console.log("⏳ Player ready, loading video:", videoId);
+                    }
+                    retries++;
+                    if (retries > 20) {
+                        clearInterval(waitForPlayer);
+                        console.log("❌ Player failed to initialize");
+                    }
+                }, 250);
             }
             youtubeUrlInput.value = "";
             console.log("✅ Video saved to Firebase:", videoId);
@@ -847,7 +873,20 @@ function listenForVideo() {
         }
 
         if (!player) {
-            console.log("YouTube player is not ready yet.");
+            let retries = 0;
+            const waitForPlayer = setInterval(() => {
+                if (player && typeof player.loadVideoById === "function") {
+                    clearInterval(waitForPlayer);
+                    hidePlayerEmptyState();
+                    player.loadVideoById(videoId);
+                    console.log("⏳ Player ready, loading video:", videoId);
+                }
+                retries++;
+                if (retries > 20) {
+                    clearInterval(waitForPlayer);
+                    console.log("❌ YouTube player failed to initialize");
+                }
+            }, 250);
             return;
         }
 
