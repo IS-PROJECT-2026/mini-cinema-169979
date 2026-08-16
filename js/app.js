@@ -1,14 +1,12 @@
 import { auth, db } from "./firebase-config.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { ref, set, get, update, onValue, push, remove, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { ref, set,get,update,onValue ,push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
  const testRef = ref(db, "test");
 let currentUserId;
 let currentUsername;
 let currentRoomCode;
 let isHost = false;
-let isAuthenticationReady = false;
-let serverTimeOffset = 0;
 
 const adjectives = [
     "Ambitious",
@@ -47,6 +45,23 @@ function usernameTaken(members, username) {
 
     return false;
 }
+signInAnonymously(auth)
+    .then((userCredential) => {
+        console.log("Anonymous login successful");
+        currentUserId = userCredential.user.uid;
+       currentUsername = generateUsername();
+console.log(currentUsername);
+ 
+        console.log(currentUserId );
+        set(testRef,{user_id: currentUserId ,
+            message:"Heyyyy firebaseee"
+        }) .then(()=>{console.log("Data saved Successfully")})
+           .catch((error)=>{console.log(error)})
+    })
+    .catch((error) => {
+        console.log(error);
+    });
+
 const createRoomButton = document.getElementById("create-room-btn");
 const joinRoomButton = document.getElementById("join-room-btn");
 const joinRoomInput=document.getElementById("join-room-input");
@@ -67,86 +82,6 @@ const reactionOverlay = document.getElementById("reaction-overlay");
 let guestFollowsHost = false;
 let suppressGuestSync = false;
 const seenReactionIds = new Set();
-
-function setRoomActionsEnabled(enabled) {
-    createRoomButton.disabled = !enabled;
-    joinRoomButton.disabled = !enabled;
-    joinRoomInput.disabled = !enabled;
-
-    createRoomButton.textContent = enabled ? "Create Room" : "Connecting...";
-    joinRoomButton.textContent = enabled ? "Join Room" : "Connecting...";
-}
-
-setRoomActionsEnabled(false);
-
-function getEstimatedServerTime() {
-    return Date.now() + serverTimeOffset;
-}
-
-function createPlaybackPayload(state, time) {
-    return {
-        state,
-        time,
-        // Captured before the write travels to Firebase.
-        capturedAt: getEstimatedServerTime(),
-        // Replaced by Firebase with the authoritative commit time.
-        updatedAt: serverTimestamp()
-    };
-}
-
-function estimateHostPlaybackTime(playback) {
-    const hostTime = Number(playback?.time) || 0;
-
-    if (!playback || playback.state !== "playing") {
-        return hostTime;
-    }
-
-    const capturedAt = Number(playback.capturedAt);
-    const updatedAt = Number(playback.updatedAt);
-    const hasCapturedAt = Number.isFinite(capturedAt) && capturedAt > 0;
-    const hasUpdatedAt = Number.isFinite(updatedAt) && updatedAt > 0;
-    const writeDelay = hasCapturedAt && hasUpdatedAt
-        ? Math.max(0, updatedAt - capturedAt)
-        : 0;
-    const deliveryReference = hasUpdatedAt ? updatedAt : capturedAt;
-    const deliveryDelay = Number.isFinite(deliveryReference) && deliveryReference > 0
-        ? Math.max(0, getEstimatedServerTime() - deliveryReference)
-        : 0;
-
-    // Account for the host-to-Firebase write and the elapsed time after Firebase
-    // committed it, so this is the host's estimated position right now.
-    return hostTime + (writeDelay + deliveryDelay) / 1000;
-}
-
-onValue(ref(db, ".info/serverTimeOffset"), (snapshot) => {
-    const offset = snapshot.val();
-    serverTimeOffset = typeof offset === "number" ? offset : 0;
-});
-
-signInAnonymously(auth)
-    .then((userCredential) => {
-        console.log("Anonymous login successful");
-        currentUserId = userCredential.user.uid;
-        currentUsername = generateUsername();
-        isAuthenticationReady = true;
-        setRoomActionsEnabled(true);
-
-        console.log(currentUsername);
-        console.log(currentUserId);
-        set(testRef, {
-            user_id: currentUserId,
-            message: "Heyyyy firebaseee"
-        }).then(() => {
-            console.log("Data saved Successfully");
-        }).catch((error) => {
-            console.log(error);
-        });
-    })
-    .catch((error) => {
-        console.error("Anonymous login failed:", error.code, error.message);
-        createRoomButton.textContent = "Reload to retry";
-        joinRoomButton.textContent = "Reload to retry";
-    });
 
 roomPage.style.display = "none";
 
@@ -386,7 +321,7 @@ setInterval(() => {
 }, 60000);
  
 createRoomButton.addEventListener("click", () => {
-    if (!isAuthenticationReady || !currentUserId) {
+    if (!currentUserId) {
     console.log("User is not authenticated yet.");
     return;
 }
@@ -403,7 +338,11 @@ updateGuestControlsButton();
     hostId: currentUserId,
     createdAt:Date.now(),
     lastActivity: Date.now(),
-    playback: createPlaybackPayload("paused", 0),
+    playback: {
+        state: "paused",
+        time: 0,
+        updatedAt: Date.now()
+    },
     members:{
          [currentUserId]: currentUsername
     } 
@@ -447,12 +386,7 @@ function displayMembers(snapshot) {
         memberList.appendChild(memberItem);
     }
 }
-joinRoomButton.addEventListener("click",()=>{
-    if (!isAuthenticationReady || !currentUserId) {
-        return;
-    }
-
-    console.log("You have joined the room :",joinRoomInput.value);
+joinRoomButton.addEventListener("click",()=>{console.log("You have joined the room :",joinRoomInput.value);
     const roomPath = "rooms/" +joinRoomInput.value;
     currentRoomCode = joinRoomInput.value;
     isHost = false;
@@ -602,13 +536,21 @@ function onPlayerStateChange(event) {
 
     if (event.data === YT.PlayerState.PLAYING) {
 
-        set(playbackRef, createPlaybackPayload("playing", currentTime));
+        set(playbackRef, {
+            state: "playing",
+            time: currentTime,
+            updatedAt: Date.now()
+        });
 
     }
 
     if (event.data === YT.PlayerState.PAUSED) {
 
-        set(playbackRef, createPlaybackPayload("paused", currentTime));
+        set(playbackRef, {
+            state: "paused",
+            time: currentTime,
+            updatedAt: Date.now()
+        });
 
     }
 }
@@ -644,7 +586,14 @@ function syncGuestToHost({ applyFollowMode = false } = {}) {
                 return;
             }
 
-        const estimatedHostTime = estimateHostPlaybackTime(playback);
+        const hostTime = playback.time || 0;
+        const updatedAt = playback.updatedAt || Date.now();
+        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+        let estimatedHostTime = hostTime;
+
+        if (playback.state === "playing") {
+            estimatedHostTime = hostTime + elapsedSinceUpdate;
+        }
 
         suppressGuestSync = true;
 
@@ -720,9 +669,18 @@ function listenForPlayback() {
             }
 
             hidePlayerEmptyState();
-        const estimatedHostTime = estimateHostPlaybackTime(playback);
 
-        console.log("Firebase host time:", playback.time || 0);
+        const hostTime = playback.time || 0;
+        const updatedAt = playback.updatedAt || Date.now();
+        const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+
+        let estimatedHostTime = hostTime;
+
+        if (playback.state === "playing") {
+            estimatedHostTime = hostTime + elapsedSinceUpdate;
+        }
+
+        console.log("Firebase host time:", hostTime);
         console.log("Estimated host time:", estimatedHostTime);
         console.log("Host state:", playback.state);
 
@@ -790,7 +748,11 @@ function checkForSeek() {
             return;
         }
 
-        set(playbackRef, createPlaybackPayload(state, currentTime));
+        set(playbackRef, {
+            state: state,
+            time: currentTime,
+            updatedAt: Date.now()
+        });
     }
 
     lastTime = currentTime;
@@ -976,13 +938,22 @@ function checkGuestSync() {
             return;
         }
 
-      const estimatedHostTime = estimateHostPlaybackTime(playback);
+      const hostTime = playback.time || 0;
+const updatedAt = playback.updatedAt || Date.now();
+
+const elapsedSinceUpdate = (Date.now() - updatedAt) / 1000;
+
+let estimatedHostTime = hostTime;
+
+if (playback.state === "playing") {
+    estimatedHostTime = hostTime + elapsedSinceUpdate;
+}
 
 const guestTime = player.getCurrentTime();
 
 const difference = Math.abs(estimatedHostTime - guestTime);
 
-console.log("Firebase host time:", playback.time || 0);
+console.log("Firebase host time:", hostTime);
 console.log("Estimated host time:", estimatedHostTime);
 console.log("Guest time:", guestTime);
 console.log("Difference:", difference);
@@ -1044,7 +1015,11 @@ function updateHostTime() {
         "rooms/" + currentRoomCode + "/playback"
     );
 
-    set(playbackRef, createPlaybackPayload("playing", currentTime));
+    set(playbackRef, {
+        state: "playing",
+        time: currentTime,
+        updatedAt: Date.now()
+    });
 }
 
 setInterval(updateHostTime, 1000);
