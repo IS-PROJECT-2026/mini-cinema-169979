@@ -756,7 +756,7 @@ h1 {
 }
 
 #guest-controls-btn.mode-switch:not(.is-off) .mode-switch-label-host {
-    color: #fff;
+    color: #f2e8e8;
 }
 
 #guest-controls-btn.mode-switch.is-off .mode-switch-label-self {
@@ -777,7 +777,7 @@ footer {
 }
 
 footer a {
-    color: #c4b5fd;
+    color: #ab9ce8;
     text-decoration: none;
 }
 
