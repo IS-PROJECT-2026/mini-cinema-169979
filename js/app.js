@@ -390,7 +390,8 @@ joinRoomButton.addEventListener("click",()=>{console.log("You have joined the ro
     const roomPath = "rooms/" +joinRoomInput.value;
     currentRoomCode = joinRoomInput.value;
     isHost = false;
-    guestFollowsHost = false;
+    // New guests automatically follow the host on every device.
+    guestFollowsHost = true;
     updateGuestControlsButton();
     const roomRef=ref(db,roomPath);
     get(roomRef)
@@ -554,7 +555,7 @@ function onPlayerStateChange(event) {
     }
 }
 function syncGuestToHost({ applyFollowMode = false } = {}) {
-    if (isHost || !player || !currentRoomCode) {
+    if (isHost || !player || !playerReady || !currentRoomCode) {
         return;
     }
 
@@ -595,7 +596,21 @@ function syncGuestToHost({ applyFollowMode = false } = {}) {
         }
 
         suppressGuestSync = true;
-        player.seekTo(estimatedHostTime, true);
+
+        // Load the host video at its current position when this guest has not
+        // loaded it yet; seeking alone cannot synchronize a blank player.
+        const loadedVideoId = typeof player.getVideoData === 'function'
+            ? player.getVideoData().video_id
+            : null;
+
+        if (loadedVideoId !== videoId) {
+            player.loadVideoById({
+                videoId,
+                startSeconds: estimatedHostTime
+            });
+        } else {
+            player.seekTo(estimatedHostTime, true);
+        }
 
         if (playback.state === "playing") {
             player.playVideo();
@@ -1090,5 +1105,10 @@ function onPlayerReady() {
     }
 
     listenForVideo();
-    handleGuestReconnectSync();
+
+    // The first database update may arrive before YouTube is ready. Syncing
+    // here guarantees a new guest starts at the host's current position.
+    if (!isHost) {
+        syncGuestToHost({ applyFollowMode: true });
+    }
 }
