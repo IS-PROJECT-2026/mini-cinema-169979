@@ -1077,7 +1077,7 @@ function listenForMessages() {
             const text = document.createElement("span");
             text.textContent = message.text;
             const time = document.createElement("small");
-            time.textContent = new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          time.textContent = new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
             messageItem.appendChild(username);
             messageItem.appendChild(text);
             messageItem.appendChild(time);
