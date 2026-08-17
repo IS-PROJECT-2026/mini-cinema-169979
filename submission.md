@@ -105,14 +105,15 @@ You must engineer **three merge conflicts**, each triggered by a **different cau
 
 ### Conflict 1 — Full Chronology
 
-**What cause did you use?** [Name the type of conflict cause from the lecture]
+**What cause did you use?** [ Same-line edit conflict — two branches modified the exact same line of the same file in different ways.
+]
 
 #### Step 1: Generating the Clash
 *Screenshot showing the merge attempt and the conflict warning.*
 
 [PASTE SCREENSHOT OF ATTEMPTED MERGE / TERMINAL WARNING HERE]
 
-* **Caption:** [Describe which two branches collided and the warning received]
+* **Caption:** [ Branches `feat/21-header-red` and `feat/22-header-blue` both changed line 85 of `css/style.css` (the h1 gradient color) — one to red, one to blue. Merging `feat/22-header-blue` into `main` (after `feat/21-header-red` was already merged) produced a `CONFLICT (content): Merge conflict in css/style.css` warning.]
 
 #### Step 2: Inside the Code Editor (Conflict Markers)
 *Screenshot showing the raw, unresolved conflict markers (`<<<<<<< HEAD`, `=======`, `>>>>>>>`) in your editor.*
