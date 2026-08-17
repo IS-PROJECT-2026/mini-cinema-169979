@@ -805,6 +805,8 @@ window.initializePlayer = function () {
     }
 };
 
+ 
+ 
 // --- Custom fullscreen -----------------------------------------------
 function isFullscreenActive() {
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -839,12 +841,13 @@ if (fullscreenToggleBtn) {
 function updateFullscreenToggleState() {
     if (!fullscreenToggleBtn) return;
     const active = isFullscreenActive();
-    fullscreenToggleBtn.textContent = active ? "\u2922" : "\u26f6";
+   fullscreenToggleBtn.textContent = active ? "Exit FS" : "Fullscreen";
     fullscreenToggleBtn.setAttribute("aria-pressed", String(active));
 }
 
 document.addEventListener("fullscreenchange", updateFullscreenToggleState);
 document.addEventListener("webkitfullscreenchange", updateFullscreenToggleState);
+ 
 // --------------------------------------------------------------------
 
 if (typeof YT !== "undefined" && YT.Player) {
