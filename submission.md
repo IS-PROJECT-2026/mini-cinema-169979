@@ -27,15 +27,14 @@
 
 ### B. A Mistake or Struggle
 
-Link to a commit, PR, or issue where something went wrong — a bad commit message you had to fix, a branch you had to delete and recreate, a PR that needed rework, or a deployment that broke. 
-
+ 
 - **Link to the evidence:** [ https://github.com/IS-PROJECT-2026/mini-cinema-169979/pull/35]
 - **What happened and how did you recover?** [ Pull Request #35 was merged into `main`, but after the merge, I realised that the functionality did not work as expected. I therefore reverted the merge, which caused the changes to appear again as a pull request. I later closed the pull request without merging it, restoring the `main` branch to a more functional state from before the changes introduced in PR #35.
 ]
 
 ### C. A Pull Request You're Proud Of
 
-Paste the URL of the PR that best shows your self-review process — one where the description is clear, the issue linkage is correct, and the diff tells a coherent story.
+ 
 
 - **PR URL:** [ https://github.com/IS-PROJECT-2026/mini-cinema-169979/pull/24]
 - **What did you check before merging?** [ I reviewed the changed files to confirm that the YouTube URL was correctly converted into a video ID, loaded into the player, and stored in Firebase. I also checked that the feature was tested and linked to Issue #7 before merging into `main`.
@@ -52,12 +51,12 @@ Paste the URL of the PR that best shows your self-review process — one where t
 
 ## 4. Screenshots of Key GitHub Features
 
-Demonstrate your workflow mechanics by embedding your screenshots below.
+ 
 
 > **CRITICAL FOR WORKING IMAGES:** Do not type manual folder paths. Edit this file directly on the GitHub web interface, click on the blank line below each prompt, and **paste (Ctrl+V / Cmd+V)** your screenshot. GitHub will automatically upload the file and generate a permanent, working image link for you.
 
 ### A. Milestones and Issues
-*Provide a screenshot showing your active milestone(s) and the granular tracking issues linked directly to them.*
+ 
 
 [ ![milestone 1]( evidence\Milestone_1.png)]
 [![milestone 2]( evidence\Milestone_2.png)]
@@ -68,21 +67,21 @@ Demonstrate your workflow mechanics by embedding your screenshots below.
 * **Caption:** [ These screenshots show the project milestones and the granular issues assigned to them for tracking feature development and project progress.]
 
 ### B. Project Board
-*Provide a screenshot of your GitHub Project Board with your issues organized dynamically across columns (To Do, In Progress, Done).*
+ 
 
 [ ![project image](evidence\Project.png)]
 
 * **Caption:** [ This screenshot shows the Mini Cinema project board with development issues organised dynamically into To Do, In Progress, and Done columns, allowing the progress of project tasks to be tracked.All issues have been completed and moved to the done column.]
 
 ### C. Branching Architecture
-*Provide a screenshot showing your local or remote Git branch list, highlighting your use of conventional, issue-linked naming patterns (e.g., `feat/`, `fix/`, `style/`).*
+ 
 
 [![branches-image]( evidence\Branch.png)]
 
 * **Caption:** [ This screenshot shows the project's branching architecture, using conventional feat/ and fix/ naming patterns to separate feature development from bug fixes.]
 
 ### D. Pull Requests & Traceability
-*Provide a screenshot of a completed or open Pull Request (PR) on GitHub that clearly shows it is linked to a related development issue.*
+ 
 
 [ evidence\PR_Traceability.png]
 
