@@ -805,46 +805,7 @@ window.initializePlayer = function () {
     }
 };
 
-// --- Custom fullscreen -----------------------------------------------
-function isFullscreenActive() {
-    return !!(document.fullscreenElement || document.webkitFullscreenElement);
-}
-
-function enterFullscreen() {
-    if (!moviePanel) return;
-    if (moviePanel.requestFullscreen) {
-        moviePanel.requestFullscreen().catch((error) => {
-            console.log("Fullscreen request failed:", error);
-        });
-    } else if (moviePanel.webkitRequestFullscreen) {
-        moviePanel.webkitRequestFullscreen();
-    }
-}
-
-function exitFullscreen() {
-    if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-    } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-    }
-}
-
-if (fullscreenToggleBtn) {
-    fullscreenToggleBtn.addEventListener("click", () => {
-        if (isFullscreenActive()) exitFullscreen();
-        else enterFullscreen();
-    });
-}
-
-function updateFullscreenToggleState() {
-    if (!fullscreenToggleBtn) return;
-    const active = isFullscreenActive();
-    fullscreenToggleBtn.textContent = active ? "\u2922" : "\u26f6";
-    fullscreenToggleBtn.setAttribute("aria-pressed", String(active));
-}
-
-document.addEventListener("fullscreenchange", updateFullscreenToggleState);
-document.addEventListener("webkitfullscreenchange", updateFullscreenToggleState);
+ 
 // --------------------------------------------------------------------
 
 if (typeof YT !== "undefined" && YT.Player) {
