@@ -151,14 +151,16 @@ You must engineer **three merge conflicts**, each triggered by a **different cau
 
 ### Conflict 3 — Different Cause
 
-**What cause did you use?** [Name the type of conflict cause — must be different from Conflicts 1 and 2]
+**What cause did you use?** Add/add conflict — two branches independently created a new file with the same name but different content.
 
-**Why does this cause trigger a conflict?** [1–2 sentences explaining the mechanism]
+**Why does this cause trigger a conflict?** Both `docs/25-notes-a` and `docs/26-notes-b` created a file called `js/NOTES.md` from scratch, each with different content. Since neither branch had a common ancestor version of the file to compare against, Git could not determine which version to keep and flagged it as a conflict rather than silently picking one.
 
-[PASTE SCREENSHOT OF CONFLICT MARKERS FOR CONFLICT 3 HERE]
+ <img width="960" height="540" alt="Screenshot 2026-08-17 235944" src="https://github.com/user-attachments/assets/93098970-0811-4400-9b41-81bf95714a4d" />
 
-* **Caption:** [Brief description of the conflicting branches and file]
+<img width="671" height="459" alt="Screenshot 2026-08-18 000303" src="https://github.com/user-attachments/assets/f6e48474-b736-4efd-bc70-eeb113fbb3d4" />
+
+
+* **Caption:** Branches `docs/25-notes-a` and `docs/26-notes-b` both added a new `js/NOTES.md` file with different content. Merging `docs/25-notes-a` into `main` succeeded, but merging `docs/26-notes-b` immediately after produced `CONFLICT (add/add): Merge conflict in js/NOTES.md`, since both branches added the same filename independently. The conflict was resolved by keeping the alternate version's content and removing the markers, then pushed via Pull Request #54 into `main`.
 
 ---
-##
  
