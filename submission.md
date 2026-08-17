@@ -4,7 +4,7 @@
 
 - **Full Name:** [Nicole]
 - **GitHub Username:** [NicoleMumo]
-- **Email:** [Your Student Email Here]
+- **Email:** [nicole.mumo@strathmore.edu]
 
 ---
 
@@ -16,38 +16,37 @@
 ---
 
 ## 3. Reflection — Grounded in Your Git History
-
-> **Rules:** Every answer below **must include a direct link** to the specific commit, PR, issue, or branch in your repository that demonstrates what you are describing. Answers without working links will not be graded. Generic explanations that could apply to any project will receive zero marks.
->
-> **Marks:** A (2 marks) · B (1 mark) · C (1 mark) · D (1 mark) = **5 marks total**
+ 
 
 ### A. Your Best Commit
 
-Paste the URL of the commit in your history that you think best demonstrates clean conventional commit practice (good type tag, clear subject, meaningful body or footer).
+ 
 
-- **Commit URL:** [Paste the full GitHub commit URL here]
-- **Why this one?** [1–2 sentences explaining what makes this commit well-structured]
+- **Commit URL:** [ https://github.com/IS-PROJECT-2026/mini-cinema-169979/commit/65bb18c]
+- **Why this one?** [  It uses the correct feat: tag, clearly describes the specific change made, and shows a real feature rather than a vague update.]
 
 ### B. A Mistake or Struggle
 
 Link to a commit, PR, or issue where something went wrong — a bad commit message you had to fix, a branch you had to delete and recreate, a PR that needed rework, or a deployment that broke. 
 
-- **Link to the evidence:** [Paste URL here]
-- **What happened and how did you recover?** [2–3 sentences]
+- **Link to the evidence:** [ https://github.com/IS-PROJECT-2026/mini-cinema-169979/pull/35]
+- **What happened and how did you recover?** [ Pull Request #35 was merged into `main`, but after the merge, I realised that the functionality did not work as expected. I therefore reverted the merge, which caused the changes to appear again as a pull request. I later closed the pull request without merging it, restoring the `main` branch to a more functional state from before the changes introduced in PR #35.
+]
 
 ### C. A Pull Request You're Proud Of
 
 Paste the URL of the PR that best shows your self-review process — one where the description is clear, the issue linkage is correct, and the diff tells a coherent story.
 
-- **PR URL:** [Paste the full GitHub PR URL here]
-- **What did you check before merging?** [1–2 sentences on what you reviewed]
+- **PR URL:** [ https://github.com/IS-PROJECT-2026/mini-cinema-169979/pull/24]
+- **What did you check before merging?** [ I reviewed the changed files to confirm that the YouTube URL was correctly converted into a video ID, loaded into the player, and stored in Firebase. I also checked that the feature was tested and linked to Issue #7 before merging into `main`.
+]
 
 ### D. One Thing You Would Do Differently
+ 
 
-If you had to restart this project from scratch with everything you know now, name one specific workflow decision you would change (not a code change — a Git/project management decision).
-
-- **What would you change?** [1–2 sentences]
-- **Link to the evidence of the original decision:** [Paste URL to the commit, branch, or issue that shows the decision you'd redo]
+- **What would you change?** [ What would you change? I would require myself to fully test and review a feature in feat/9-sync-non-host-clients   branch before merging its pull request into main. This would reduce the risk of merging incomplete or faulty work into the main branch, as happened with PR #35. The unwanted commit was "fix:guest initial sync on join" which was in the feat/9-sync-non-host-clients and  was attached to PR 35 that I had to revert. ]
+- **Link to the evidence of the original decision:** [  https://github.com/IS-PROJECT-2026/mini-cinema-169979/commit/a6ca99ec16bdaf025acfd523c78128d0b2d2932c] and 
+[https://github.com/IS-PROJECT-2026/mini-cinema-169979/pull/35]
 
 ---
 
@@ -60,30 +59,34 @@ Demonstrate your workflow mechanics by embedding your screenshots below.
 ### A. Milestones and Issues
 *Provide a screenshot showing your active milestone(s) and the granular tracking issues linked directly to them.*
 
-[PASTE YOUR MILESTONE SCREENSHOT DIRECTLY HERE]
+[ ![milestone 1]( evidence\Milestone_1.png)]
+[![milestone 2]( evidence\Milestone_2.png)]
+[![milestone 3]( evidence\Milestone_3.png)]
+[![milestone overview]( evidence\Milestone_overview.png)]
 
-* **Caption:** [Write a brief sentence describing your milestones here]
+
+* **Caption:** [ These screenshots show the project milestones and the granular issues assigned to them for tracking feature development and project progress.]
 
 ### B. Project Board
 *Provide a screenshot of your GitHub Project Board with your issues organized dynamically across columns (To Do, In Progress, Done).*
 
-[PASTE YOUR PROJECT BOARD SCREENSHOT DIRECTLY HERE]
+[ ![project image](evidence\Project.png)]
 
-* **Caption:** [Write a brief sentence describing your board state here]
+* **Caption:** [ This screenshot shows the Mini Cinema project board with development issues organised dynamically into To Do, In Progress, and Done columns, allowing the progress of project tasks to be tracked.All issues have been completed and moved to the done column.]
 
 ### C. Branching Architecture
 *Provide a screenshot showing your local or remote Git branch list, highlighting your use of conventional, issue-linked naming patterns (e.g., `feat/`, `fix/`, `style/`).*
 
-[PASTE YOUR BRANCHING SCREENSHOT DIRECTLY HERE]
+[![branches-image]( evidence\Branch.png)]
 
-* **Caption:** [Write a brief sentence describing your branch list here]
+* **Caption:** [ This screenshot shows the project's branching architecture, using conventional feat/ and fix/ naming patterns to separate feature development from bug fixes.]
 
 ### D. Pull Requests & Traceability
 *Provide a screenshot of a completed or open Pull Request (PR) on GitHub that clearly shows it is linked to a related development issue.*
 
-[PASTE YOUR PULL REQUEST SCREENSHOT DIRECTLY HERE]
+[ evidence\PR_Traceability.png]
 
-* **Caption:** [Write a brief sentence describing your PR and what issue it closes]
+* **Caption:** [ This PR demonstrates traceability by linking PR #23 to issue #6, “Embed YouTube Iframe Player API,” which was automatically closed after the pull request was merged into main]
 
 ---
 
