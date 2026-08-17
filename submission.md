@@ -57,33 +57,39 @@
 
 ### A. Milestones and Issues
  
+<img width="1312" height="851" alt="image" src="https://github.com/user-attachments/assets/bea52dcc-4021-4c12-a998-fdc376cfbc80" />
 
-[ ![milestone 1]( evidence\Milestone_1.png)]
-[![milestone 2]( evidence\Milestone_2.png)]
-[![milestone 3]( evidence\Milestone_3.png)]
-[![milestone overview]( evidence\Milestone_overview.png)]
+ 
+ <img width="1340" height="885" alt="image" src="https://github.com/user-attachments/assets/0e718f50-f6d5-4a1f-80e7-0c8c05847d2a" />
+
+<img width="1377" height="793" alt="image" src="https://github.com/user-attachments/assets/e24e14b5-a426-4fb4-b181-cb0e619f5b19" />
+
+<img width="1311" height="663" alt="image" src="https://github.com/user-attachments/assets/88ef785d-1473-4c6d-bade-d463e0403c5c" />
+
 
 
 * **Caption:** [ These screenshots show the project milestones and the granular issues assigned to them for tracking feature development and project progress.]
 
 ### B. Project Board
  
+<img width="1223" height="899" alt="image" src="https://github.com/user-attachments/assets/3bc968a0-c636-4bf6-a052-f3eada9c9ec0" />
 
-[ ![project image](evidence\Project.png)]
+
 
 * **Caption:** [ This screenshot shows the Mini Cinema project board with development issues organised dynamically into To Do, In Progress, and Done columns, allowing the progress of project tasks to be tracked.All issues have been completed and moved to the done column.]
 
 ### C. Branching Architecture
  
+ <img width="1424" height="957" alt="image" src="https://github.com/user-attachments/assets/427bb3c4-abdc-4018-ba24-7aace52fec31" />
 
-[![branches-image]( evidence\Branch.png)]
 
 * **Caption:** [ This screenshot shows the project's branching architecture, using conventional feat/ and fix/ naming patterns to separate feature development from bug fixes.]
 
 ### D. Pull Requests & Traceability
  
 
-[ evidence\PR_Traceability.png]
+ <img width="1017" height="894" alt="image" src="https://github.com/user-attachments/assets/8329f022-2754-4317-84fe-db6612854b0d" />
+
 
 * **Caption:** [ This PR demonstrates traceability by linking PR #23 to issue #6, “Embed YouTube Iframe Player API,” which was automatically closed after the pull request was merged into main]
 
