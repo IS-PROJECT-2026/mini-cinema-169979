@@ -103,42 +103,49 @@ You must engineer **three merge conflicts**, each triggered by a **different cau
 
 ---
 
+ 
 ### Conflict 1 — Full Chronology
 
-**What cause did you use?** [Name the type of conflict cause from the lecture]
+**What cause did you use?** Same-line edit conflict — two branches modified the exact same line of the same file in different ways.
 
 #### Step 1: Generating the Clash
 *Screenshot showing the merge attempt and the conflict warning.*
 
-[PASTE SCREENSHOT OF ATTEMPTED MERGE / TERMINAL WARNING HERE]
+ <img width="800" height="537" alt="Screenshot 2026-08-17 232519" src="https://github.com/user-attachments/assets/d6bef699-9a65-4b06-91a8-fa4af13dd8b2" />
 
-* **Caption:** [Describe which two branches collided and the warning received]
+
+* **Caption:** Branches `feat/21-header-red` and `feat/22-header-blue` both changed line 85 of `css/style.css` (the h1 gradient color) — one to red, one to blue. Merging `feat/21-header-red` into `main` succeeded cleanly, but merging `feat/22-header-blue` immediately after produced `CONFLICT (content): Merge conflict in css/style.css`.
 
 #### Step 2: Inside the Code Editor (Conflict Markers)
 *Screenshot showing the raw, unresolved conflict markers (`<<<<<<< HEAD`, `=======`, `>>>>>>>`) in your editor.*
 
-[PASTE SCREENSHOT OF RAW CONFLICT MARKERS HERE]
+ <img width="800" height="537" alt="Screenshot 2026-08-17 232519" src="https://github.com/user-attachments/assets/9a837551-5287-4b50-8c3b-e3105de493c0" />
 
-* **Caption:** [Explain what caused the dispute and your reasoning for the final version]
+
+* **Caption:** The conflict markers show `HEAD` (the red gradient, `#f43f5e`, already merged from `feat/21-header-red`) against the incoming change from `feat/22-header-blue` (`#3b82f6`). I kept the red version, since it better matched the landing page's warmer accent palette.
 
 #### Step 3: Resolution & Clean Merge
 *Screenshot of your clean Git history or completed PR showing the conflict was resolved and merged.*
 
-[PASTE SCREENSHOT OF CLEAN RESOLUTION HERE]
+ <img width="473" height="446" alt="Screenshot 2026-08-17 232918" src="https://github.com/user-attachments/assets/80d1f7ca-5db0-4996-bb96-f3db6fbaa918" />
 
-* **Caption:** [Describe the final state after resolution]
+
+* **Caption:** Since `main` is a protected branch, the resolved conflict couldn't be pushed directly — it was pushed to `feat/21-22-resolve-conflict` and merged via Pull Request #51, which shows all 4 commits (the two gradient changes, the merge, and the conflict-resolution fix) merged cleanly into `main`.
 
 ---
 
 ### Conflict 2 — Different Cause
 
-**What cause did you use?** [Name the type of conflict cause — must be different from Conflict 1]
+**What cause did you use?** Modify/delete conflict (block deletion vs. in-block edit) — one branch deleted an entire function block, while the other branch edited a line inside that same block.
 
-**Why does this cause trigger a conflict?** [1–2 sentences explaining the mechanism]
+**Why does this cause trigger a conflict?** Git could not automatically determine whether to keep, remove, or merge the fullscreen code, because `fix/23-remove-fullscreen` deleted the whole block from `js/main.js` while `fix/24-tweak-fullscreen` still contained an edited version of a line inside that same block. This is a fundamentally different cause from Conflict 1, which was a same-line edit-vs-edit clash — here the clash is between removing code entirely and modifying it.
+ 
+ <img width="951" height="540" alt="Screenshot 2026-08-17 234618" src="https://github.com/user-attachments/assets/801a19a0-cadf-4502-ba56-bd913a59b16f" />
+<img width="960" height="540" alt="Screenshot 2026-08-17 234551" src="https://github.com/user-attachments/assets/7d34c09d-698c-4448-ab9d-67e9e8a36391" />
+<img width="953" height="488" alt="Screenshot 2026-08-17 234951" src="https://github.com/user-attachments/assets/894de02d-ba49-4f8a-8dd8-1ad7f0f7df8f" />
 
-[PASTE SCREENSHOT OF CONFLICT MARKERS FOR CONFLICT 2 HERE]
 
-* **Caption:** [Brief description of the conflicting branches and file]
+* **Caption:** Branches `fix/23-remove-fullscreen` (which deleted the custom fullscreen feature — `isFullscreenActive`, `enterFullscreen`, `exitFullscreen`, and their event listeners) and `fix/24-tweak-fullscreen` (which changed the fullscreen toggle button's label text) were merged into `main` one after another. Since `fix/24` still referenced code that no longer existed on `main`, Git raised `CONFLICT (content): Merge conflict in js/main.js`. The conflict was resolved by keeping the deletion — the fullscreen feature was intentionally removed, so all markers and the reintroduced block from `fix/24-tweak-fullscreen` were deleted, and the change was pushed via Pull Request #52 into `main`.
 
 ---
 
@@ -154,15 +161,4 @@ You must engineer **three merge conflicts**, each triggered by a **different cau
 
 ---
 ##
-## 6. Feedback & Evaluation
-
-To help improve this course for future engineering cohorts, please take 2 minutes to fill out the anonymous feedback form. Your honest review helps shape how this program is taught next semester!
-- [ ] **Anonymous Evaluation Form:** [Course & Instructor Evaluation](https://forms.gle/YLybnsyXXErKEg3s9)
-
----
  
-## Final Submission
- 
-Once your repository is complete, submit your work through the official submission form below. The form will **stop accepting responses after Monday, August 17th, 2026** — no late submissions will be accepted.
- 
-> **Submission Form:** [https://forms.gle/KrT4VxtFtkU3wtYu8](https://forms.gle/KrT4VxtFtkU3wtYu8)
