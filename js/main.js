@@ -839,7 +839,7 @@ if (fullscreenToggleBtn) {
 function updateFullscreenToggleState() {
     if (!fullscreenToggleBtn) return;
     const active = isFullscreenActive();
-    fullscreenToggleBtn.textContent = active ? "\u2922" : "\u26f6";
+   fullscreenToggleBtn.textContent = active ? "Exit FS" : "Fullscreen";
     fullscreenToggleBtn.setAttribute("aria-pressed", String(active));
 }
 
