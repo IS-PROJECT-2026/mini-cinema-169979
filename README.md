@@ -3,7 +3,7 @@
 Mini Cinema is a watch-party web app. It lets people watch a YouTube video together, at the same time, from different places.
 
 
- ⚠️ # IMPORTANT — IF THE APP IS LOADING SLOWLY ⚠️
+ ⚠️ # IMPORTANT : IF THE APP IS LOADING SLOWLY ⚠️
 
  🚨 # KNOWN ISSUE: SLOW SIGN-IN  
 
@@ -53,7 +53,7 @@ If the app hangs on "Connecting…" or takes a long time to load, it is almost a
 
 ### Reconnecting
 
-- If your page refreshes or you briefly lose connection, you have **7 minutes** to come back — you'll be placed back in the same room automatically, under the same name.
+- If your page refreshes or you briefly lose connection, you have **7 minutes** to come back  .You’ll be placed back in the same room automatically, under the same name.
 - If you're away for **longer than 7 minutes**, you're fully disconnected and removed from the room. You'll need to create or join a room again.
 
 ## Technologies Used
