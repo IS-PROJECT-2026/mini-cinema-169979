@@ -5,7 +5,8 @@ Mini Cinema is a watch-party web app. It lets people watch a YouTube video toget
 
  ⚠️ # IMPORTANT : IF THE APP IS LOADING SLOWLY ⚠️
 
- 🚨 # KNOWN ISSUE: SLOW SIGN-IN  
+ 🚨 # KNOWN ISSUE: SLOW SIGN-IN  AND ANTIVIRUS BLOCKING THE SITE
+ 
 
 If the app hangs on "Connecting…" or takes a long time to load, it is almost always caused by a browser extension like ad blockers 🛑 and privacy/tracking-protection extensions 🕵️ are the usual culprits interfering with requests to Firebase or YouTube.
 
