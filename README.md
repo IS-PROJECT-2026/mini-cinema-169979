@@ -1,69 +1,75 @@
-# Mini Cinema
+# 🎬 Mini Cinema
 
-Mini Cinema is a watch-party web app. It lets people watch a YouTube video together, at the same time, from different places.
+Watch YouTube videos together, in sync, from anywhere.
 
+**[Try the live demo →](https://is-project-2026.github.io/mini-cinema-169979/)**
 
- ⚠️ # IMPORTANT : IF THE APP IS LOADING SLOWLY ⚠️
+---
 
- 🚨 # KNOWN ISSUE: SLOW SIGN-IN  AND ANTIVIRUS BLOCKING 
+## Features
 
-If the app hangs on "Connecting…" or takes a long time to load, it is almost always caused by a browser extension like ad blockers 🛑 and privacy/tracking-protection extensions 🕵️ are the usual culprits interfering with requests to Firebase or YouTube.
+- **Rooms with codes:** create a room and share its code, or join one with a code
+- **Host-controlled playback:** the host picks the video and controls play, pause, and seek
+- **Automatic sync:** guests follow the host without doing anything
+- **Guest freedom:** guests can resync, or take control of their own playback
+- **Live chat** inside every room
+- **Emoji reactions** that pop up on everyone's screen
+- **Self-cleaning rooms:** inactive rooms are removed automatically
 
-✅ Quick fix:
+---
 
-1. Open the app in an Incognito / Private window (extensions are disabled by default there)
-2. If it loads fast in Incognito → an extension is the cause
-3. Go back to your normal browser window and disable your extensions one at a time, reloading between each, until you find the one slowing things down
-4. Whitelist this site in that extension (or just use Incognito going forward) 
+## How to Use
 
-## What it does
-
-- Create a room and get a room code, or join a room with a code
-- The host picks a YouTube video and controls play, pause, and seek
-- Guests watch in sync with the host automatically
-- Guests can "resync" or take control of their own playback if they fall behind
-- Live chat inside the room
-- Emoji reactions that pop up on screen for everyone
-- Rooms clean themselves up automatically when they go inactive
- 
-
-## Live Demo
-
-👉 [https://is-project-2026.github.io/mini-cinema-169979/](https://is-project-2026.github.io/mini-cinema-169979/)
-
-## How to Use It
-
-### As a Host
+### Hosting
 
 1. Open the site and click **Create Room**.
-2. You'll get a room code. Share it with friends so they can join.
+2. Share the room code with your friends.
 3. Paste a YouTube link into the box at the bottom and click **Set Video**.
-4. Use the normal YouTube controls to play, pause, or skip. Everyone in the room follows you automatically.
-5. Click **Leave Room** when you're done. This closes the room for everyone right away.
+4. Use the normal YouTube controls. Everyone follows you.
+5. Click **Leave Room** when you're done. This closes the room for everyone immediately.
 
-### As a Guest
+### Joining
 
-1. Open the site, type in the room code your host gave you, and click **Join Room**.
-2. You won't see a video-link box or a "Set Video" button — only the host picks the video.
-3. Your video automatically matches the host's — same video, same play/pause, same position.
-4. If you fall behind, click **Resync** to jump back to the host's current time.
-5. You can flip the switch to "I control" to pause, play, or seek on your own without following the host. Flip it back to "Host controls" to go back to auto-sync.
-6. Use the chat box to talk to everyone in the room, and tap the emoji buttons to react.
-7. Click **Leave Room** to exit right away.
+1. Open the site, enter the room code, and click **Join Room**.
+2. Your video matches the host's automatically: same video, same play/pause state, same position. Only the host can set the video.
+3. Use the chat box to talk, and tap the emoji buttons to react.
+4. Click **Leave Room** to exit at any time.
+
+**Falling behind?** Click **Resync** to jump to the host's current time.
+
+**Want to do your own thing?** Switch to **I control** to play, pause, or seek independently. Switch back to **Host controls** to rejoin the sync.
 
 ### Reconnecting
 
-- If your page refreshes or you briefly lose connection, you have **7 minutes** to come back  .You’ll be placed back in the same room automatically, under the same name.
-- If you're away for **longer than 7 minutes**, you're fully disconnected and removed from the room. You'll need to create or join a room again.
+| Situation | What happens |
+|---|---|
+| Refresh or brief connection loss (under 7 minutes) | You're placed back in the same room, under the same name |
+| Away for more than 7 minutes | You're removed from the room and need to create or join again |
 
-## Technologies Used
+---
 
-- **HTML5** – page structure
-- **CSS3** – styling and layout
-- **JavaScript (ES Modules)** – app logic
-- **Firebase Realtime Database** – stores rooms, members, chat, and playback state
-- **Firebase Anonymous Authentication** – signs users in without needing an account
-- **YouTube IFrame Player API** – plays and controls the video
-- **GitHub Pages** – hosts the live site
- 
- 
+## Troubleshooting
+
+### Stuck on "Connecting…" or slow to sign in
+
+This is almost always caused by a browser extension blocking requests to Firebase or YouTube. Ad blockers and privacy/tracking-protection extensions are the usual cause.
+
+**Quick fix:**
+
+1. Open the app in an **Incognito / Private** window (extensions are off by default there).
+2. If it loads fast, an extension is the cause.
+3. In your normal window, disable extensions one at a time, reloading after each, until you find the culprit.
+4. Whitelist this site in that extension, or just use Incognito.
+
+---
+
+## Built With
+
+| Technology | Purpose |
+|---|---|
+| HTML5, CSS3 | Page structure, styling, and layout |
+| JavaScript (ES Modules) | App logic |
+| Firebase Realtime Database | Rooms, members, chat, and playback state |
+| Firebase Anonymous Authentication | Sign-in without needing an account |
+| YouTube IFrame Player API | Video playback and control |
+| GitHub Pages | Hosting |
