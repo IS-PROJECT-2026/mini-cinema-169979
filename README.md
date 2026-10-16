@@ -52,14 +52,21 @@ Watch YouTube videos together, in sync, from anywhere.
 
 ### Stuck on "Connecting…" or slow to sign in
 
-This is almost always caused by a browser extension blocking requests to Firebase or YouTube. Ad blockers and privacy/tracking-protection extensions are the usual cause.
+Usually caused by an ad blocker or privacy extension blocking Firebase or YouTube.
 
-**Quick fix:**
-
-1. Open the app in an **Incognito / Private** window (extensions are off by default there).
+1. Open the app in an **Incognito / Private** window.
 2. If it loads fast, an extension is the cause.
-3. In your normal window, disable extensions one at a time, reloading after each, until you find the culprit.
-4. Whitelist this site in that extension, or just use Incognito.
+3. Disable extensions one at a time to find it, then whitelist this site.
+
+### "This site can't be reached" (ERR_CONNECTION_RESET)
+
+Usually caused by antivirus or firewall software (Avast, for example) blocking the connection.
+
+1. Try a different network or device. If it loads, your antivirus is the likely cause.
+2. Add `https://is-project-2026.github.io` to your antivirus exceptions.
+3. If that fails, turn off the antivirus's web/HTTPS scanning temporarily.
+
+**Known issue:** Avast blocks this site. A permanent fix is in progress.
 
 ---
 
