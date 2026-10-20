@@ -4,6 +4,9 @@ Watch YouTube videos together, in sync, from anywhere.
 
 **[Try the live demo →](https://is-project-2026.github.io/mini-cinema-169979/)**
 
+> [!WARNING]
+> **Seeing "This site can't be reached. The connection was reset." (`ERR_CONNECTION_RESET`)?** This is usually caused by antivirus or firewall software (Avast, for example) blocking the connection. Add `https://is-project-2026.github.io` to your antivirus exceptions, or turn off its HTTPS scanning. See [Troubleshooting](#troubleshooting) for the full steps.
+
 ---
 
 ## Features
@@ -50,8 +53,6 @@ Watch YouTube videos together, in sync, from anywhere.
 
 ## Troubleshooting
 
-> **Quick fix for connection problems: open the site in an Incognito / Private window.** Incognito turns off your extensions, which is the most common cause of loading problems.
-
 ### Stuck on "Connecting…" or slow to sign in
 
 Usually caused by an ad blocker or privacy extension blocking Firebase or YouTube.
@@ -62,9 +63,11 @@ Usually caused by an ad blocker or privacy extension blocking Firebase or YouTub
 
 ### "This site can't be reached" (ERR_CONNECTION_RESET)
 
+The browser shows: *This site can't be reached. The connection was reset. Try checking the connection, checking the proxy and the firewall, or running Windows Network Diagnostics.*
+
 Usually caused by antivirus or firewall software (Avast, for example) blocking the connection.
 
-1. Try an **Incognito / Private** window first. If it still fails, try a different network or device. If it loads there, your antivirus is the likely cause.
+1. Try a different network or device. If it loads, your antivirus is the likely cause.
 2. Add `https://is-project-2026.github.io` to your antivirus exceptions.
 3. If that fails, turn off the antivirus's web/HTTPS scanning temporarily.
 
