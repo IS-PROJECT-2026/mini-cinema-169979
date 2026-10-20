@@ -50,6 +50,8 @@ Watch YouTube videos together, in sync, from anywhere.
 
 ## Troubleshooting
 
+> **Quick fix for connection problems: open the site in an Incognito / Private window.** Incognito turns off your extensions, which is the most common cause of loading problems.
+
 ### Stuck on "Connecting…" or slow to sign in
 
 Usually caused by an ad blocker or privacy extension blocking Firebase or YouTube.
@@ -62,7 +64,7 @@ Usually caused by an ad blocker or privacy extension blocking Firebase or YouTub
 
 Usually caused by antivirus or firewall software (Avast, for example) blocking the connection.
 
-1. Try a different network or device. If it loads, your antivirus is the likely cause.
+1. Try an **Incognito / Private** window first. If it still fails, try a different network or device. If it loads there, your antivirus is the likely cause.
 2. Add `https://is-project-2026.github.io` to your antivirus exceptions.
 3. If that fails, turn off the antivirus's web/HTTPS scanning temporarily.
 
